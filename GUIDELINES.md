@@ -82,7 +82,10 @@ Svelte, Astro, or another rendering framework.
 - Node and edge ids are stable non-empty strings.
 - Node ids are unique among nodes; edge ids are unique among edges.
 - Every edge references two existing nodes.
-- Positions and sizes are explicit finite numbers.
+- Positions and sizes are explicit finite numbers. The renderer never measures
+  the document, so its result never changes with the environment. The fit
+  helpers of `grafojs/layout` calculate a size from the rows of a node, and the
+  scene keeps the number.
 - Array order determines paint order and is preserved.
 - Scene data is declarative and may be rendered again after any change.
 - The renderer never mutates scene records or consumer-owned arrays.

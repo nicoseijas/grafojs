@@ -115,9 +115,19 @@ const positionedNodes = applyLayout(nodes, layout);
 ```
 
 It has the `layoutRow`, `layoutColumn`, `layoutTree`, and `layoutRadial`
-helpers. The
+helpers. The same entry point gives `fitNodeHeight` and `fitNodeWidth`, which
+calculate the size that the text of a node needs:
+
+```ts
+import { fitNodeHeight } from "grafojs/layout";
+
+const nodes = source.map((node) => ({ ...node, height: fitNodeHeight(node) }));
+```
+
+The
 [layout guide](https://github.com/nicoseijas/grafojs/blob/main/docs/layout.md)
-gives the options and the limits of a tree.
+gives the options, the limits of a tree, and the reason why the fit helpers
+calculate instead of measure.
 
 ## Graph adapter API
 

@@ -88,6 +88,61 @@ its end point. The last node thus does not go on top of the first node. A
 smaller arc includes both end points. The `sweepAngleDegrees` value must be
 between `-360` and `360`. A larger sweep puts one node on top of another node.
 
+## Fit a node to its text
+
+A scene gives the size of each node. The two fit helpers calculate that size
+from the text of the node, so an author does not guess it:
+
+```ts
+import { fitNodeHeight, fitNodeWidth } from "grafojs/layout";
+
+const nodes = source.map((node) => ({
+  ...node,
+  width: Math.max(node.width, fitNodeWidth(node)),
+  height: fitNodeHeight(node),
+}));
+```
+
+`fitNodeHeight` gives the height that holds the label, the optional tag, and the
+optional role, with the same space above the first row and below the last row.
+The renderer draws a known number of rows at known distances, so this result is
+exact. A node that gets a smaller height still draws every row, but the last row
+comes nearer to the border, and it can go below the border.
+
+`fitNodeWidth` gives the width of the widest row. Each character of a monospace
+font has the same width, so the result is exact for such a font. A proportional
+font needs a real measurement, and this helper does not make one. Treat the
+result as a first guess, or give a `charWidthRatio` that matches your font. The
+default ratio is `0.6`.
+
+```ts
+fitNodeWidth(node, { charWidthRatio: 0.55, rolePrefix: "rol" });
+```
+
+The `rolePrefix` value must be the same value that you give to `createSvgGraph`,
+because the renderer writes that prefix before the role.
+
+The result also follows the `shape` of the node. A diamond and a hexagon give
+their text less room than a rectangle, so they need more width for the same
+text.
+
+### Why the helpers do not measure the document
+
+A real measurement needs `getBBox` or `getComputedTextLength`. Both need an
+element inside a rendered document, with the font already loaded. Three
+consequences follow:
+
+- the result of the renderer would change with the environment, and a test
+  outside a browser would get zero;
+- the geometry of an edge starts at the border of a node, so a size that arrives
+  after the first paint needs a second pass;
+- a node that grows can cover the node below it, and grafojs does not own the
+  positions.
+
+A web font brings one more problem: the first paint measures the fallback font,
+and the boxes then jump when the real font arrives. So the helpers calculate,
+and the scene keeps explicit numbers.
+
 ## Failure modes
 
 Each helper validates its input. It checks that an id is not empty, that a size

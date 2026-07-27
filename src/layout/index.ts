@@ -1,5 +1,11 @@
 export { LayoutError, type LayoutErrorCode } from "./errors.js";
 export {
+  fitNodeHeight,
+  fitNodeWidth,
+  type FitNode,
+  type FitWidthOptions,
+} from "./fit.js";
+export {
   applyLayout,
   layoutColumn,
   layoutRadial,

@@ -472,11 +472,55 @@ describe("createSvgGraph", () => {
 
     const storeTexts = node(svg, "store").querySelectorAll("text");
     expect(storeTexts[0]?.getAttribute("x")).toBe("52.5");
-    expect(storeTexts[0]?.getAttribute("y")).toBe("186");
-    expect(storeTexts[1]?.getAttribute("y")).toBe("208");
+    expect(storeTexts[0]?.getAttribute("y")).toBe("180");
+    expect(storeTexts[1]?.getAttribute("y")).toBe("202");
     expect(node(svg, "email").querySelector("text")?.getAttribute("x")).toBe(
       "537.6",
     );
+  });
+
+  it("keeps the role away from the tag in a node that is too short", () => {
+    const svg = fixture();
+    const short = { x: 20, y: 100, width: 200, height: 58 };
+    createSvgGraph(svg, {
+      width: 400,
+      height: 300,
+      nodes: [
+        {
+          id: "short",
+          ...short,
+          label: "EmailSubscriber",
+          tag: "channel",
+          role: "ConcreteObserver",
+        },
+        {
+          id: "tall",
+          x: 20,
+          y: 200,
+          width: 200,
+          height: 74,
+          label: "SmsSubscriber",
+          tag: "channel",
+          role: "ConcreteObserver",
+        },
+      ],
+      edges: [],
+    }).setRolesVisible(true);
+
+    const rowY = (id: string): readonly number[] =>
+      [...node(svg, id).querySelectorAll("text")].map((text) =>
+        Number(text.getAttribute("y")),
+      );
+
+    const [, shortTag, shortRole] = rowY("short");
+    expect((shortRole ?? 0) - (shortTag ?? 0)).toBeGreaterThanOrEqual(14);
+    // The node has no room for the three rows, so the role goes below the
+    // border instead of onto the tag.
+    expect(shortRole).toBeGreaterThan(short.y + short.height - 8);
+
+    const [, tallTag, tallRole] = rowY("tall");
+    expect((tallRole ?? 0) - (tallTag ?? 0)).toBe(18);
+    expect(tallRole).toBe(200 + 60);
   });
 
   it("rejects a self-loop edge instead of drawing a degenerate path", () => {

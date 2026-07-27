@@ -1,5 +1,6 @@
 import { VisualError } from "./errors.js";
 import { edgePath, pathData, pointOnPath, type EdgePath } from "./geometry.js";
+import { nodeRowOffsets } from "./metrics.js";
 import { DEFAULT_VISUAL_CSS } from "./styles.js";
 import type {
   PulseLeg,
@@ -355,21 +356,18 @@ export const createSvgGraph = (
         "class",
         `gjs-node-shape gjs-node-shape--${node.shape ?? "rect"}`,
       );
-      const hasRole = node.role !== undefined;
       const contentX = textX(node);
-      const labelLines = node.label.split(/\r?\n/).length;
-      const labelOffset = hasRole ? 26 : 28;
-      const tagOffset = labelOffset + (labelLines - 1) * 15.5 + 22;
+      const rows = nodeRowOffsets(node, node.height);
       const label = element("text");
       label.setAttribute("x", String(contentX));
-      label.setAttribute("y", String(node.y + labelOffset));
+      label.setAttribute("y", String(node.y + rows.label));
       setMultilineText(label, node.label);
       group.append(shape, label);
       if (node.tag !== undefined) {
         const tag = element("text");
         tag.setAttribute("class", "gjs-tag");
         tag.setAttribute("x", String(contentX));
-        tag.setAttribute("y", String(node.y + tagOffset));
+        tag.setAttribute("y", String(node.y + rows.tag));
         // The case is a theme decision, so it belongs to CSS. JavaScript that
         // uppercases the text takes the choice away from the host, because
         // `text-transform` cannot restore the original case.
@@ -380,10 +378,7 @@ export const createSvgGraph = (
         const role = element("text");
         role.setAttribute("class", "gjs-role");
         role.setAttribute("x", String(contentX));
-        role.setAttribute(
-          "y",
-          String(node.y + Math.min(tagOffset + 18, node.height - 8)),
-        );
+        role.setAttribute("y", String(node.y + rows.role));
         role.textContent = `${options.rolePrefix ?? "Role"}: ${node.role}`;
         group.append(role);
       }

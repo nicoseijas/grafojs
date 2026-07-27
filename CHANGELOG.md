@@ -19,6 +19,12 @@ API. A patch version contains only a fix.
 
 ### Added
 
+- `fitNodeHeight` and `fitNodeWidth` in `grafojs/layout` give the size that the
+  text of a node needs. `fitNodeHeight` counts the rows, so it is exact.
+  `fitNodeWidth` counts the characters of the widest row, so it is exact for a
+  monospace font and a first guess for another font. Neither one measures the
+  document, so both give the same result in a browser, on a server, and in a
+  test.
 - `docs/visual/class-contract.md` makes the class names and the data attributes
   of the renderer a public contract, with a test that holds each name. A host
   that sets `injectStyles: false` gives all the styles, so it needs names that
@@ -27,6 +33,18 @@ API. A patch version contains only a fix.
 
 ### Fixed
 
+- The role of a node never sits on the tag. The renderer kept the role 8 pixels
+  above the border, so a node lower than 74 pixels pulled the role up onto the
+  tag: a node of 58 pixels left 2 pixels between two rows of 10 and 11 pixels.
+  The two rows now keep a distance of 14 pixels, and the role goes below the
+  border when the node is too short for the three rows.
+- The text of a node now has the same space above and below. Each row sat at a
+  fixed distance from the top border, so the space below the last row was
+  whatever the height left: about 16 pixels above and 6 below. Every row moves
+  up by 6 pixels. A host that positions text of its own against the rows of
+  grafojs must check that shift.
+- A node with a role and no tag puts the role in the free row, directly below
+  the label. The previous version left the row of the tag empty.
 - `createSvgGraph` rejects an element that is not an `<svg>` element in the SVG
   namespace. The previous version accepted a `<div>`, which takes the attributes
   and the children without a complaint and then shows nothing.
