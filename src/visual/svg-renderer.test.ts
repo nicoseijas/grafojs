@@ -70,6 +70,75 @@ const fixture = (): SVGSVGElement => {
   ) as unknown as SVGSVGElement;
 };
 
+interface DrivenFixture {
+  readonly svg: SVGSVGElement;
+  /** Moves the clock and runs every frame that the loop asked for. */
+  readonly advance: (ms: number) => void;
+  readonly pendingFrames: () => number;
+}
+
+/**
+ * A fixture that owns the clock and the frame loop. The renderer reads both
+ * from the window of the SVG, so a test can run the animation frame by frame
+ * and can assert the position of the pulse at each step.
+ */
+const drivenFixture = (): DrivenFixture => {
+  const window = new Window();
+  const svg = window.document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg",
+  ) as unknown as SVGSVGElement;
+
+  let now = 0;
+  let nextFrameId = 1;
+  const frames = new Map<number, FrameRequestCallback>();
+
+  const define = (name: string, value: unknown): void => {
+    Object.defineProperty(window, name, {
+      value,
+      configurable: true,
+      writable: true,
+    });
+  };
+
+  define("performance", {
+    now: () => now,
+  });
+  define("requestAnimationFrame", (callback: FrameRequestCallback): number => {
+    const id = nextFrameId;
+    nextFrameId += 1;
+    frames.set(id, callback);
+    return id;
+  });
+  define("cancelAnimationFrame", (id: number): void => {
+    frames.delete(id);
+  });
+
+  return {
+    svg,
+    advance: (ms) => {
+      now += ms;
+      const due = [...frames.values()];
+      frames.clear();
+      for (const callback of due) {
+        callback(now);
+      }
+    },
+    pendingFrames: () => frames.size,
+  };
+};
+
+const pulseCentre = (svg: SVGSVGElement): { x: number; y: number } => {
+  const dot = svg.querySelector(".gjs-pulse");
+  if (dot === null) {
+    throw new Error("Missing pulse dot.");
+  }
+  return {
+    x: Number(dot.getAttribute("cx")),
+    y: Number(dot.getAttribute("cy")),
+  };
+};
+
 const node = (svg: SVGSVGElement, id: string): SVGGElement => {
   const result = svg.querySelector<SVGGElement>(`[data-node-id="${id}"]`);
   if (result === null) {
@@ -382,5 +451,133 @@ describe("createSvgGraph", () => {
     expect(
       svg.querySelector(".gjs-root")?.classList.contains("gjs-roles-visible"),
     ).toBe(true);
+  });
+
+  it("moves the pulse through the frame loop and runs each leg in order", async () => {
+    const { svg, advance, pendingFrames } = drivenFixture();
+    const view = createSvgGraph(svg, scene, { reducedMotion: () => false });
+
+    const running = view.pulse(
+      [{ edge: "email-call" }, { edge: "sms-call", reverse: true }],
+      { durationMs: 100 },
+    );
+
+    // The first leg goes from the store on the left to the email node on the
+    // right, so the dot moves to the right on each frame.
+    expect(pendingFrames()).toBe(1);
+    advance(50);
+    const first = pulseCentre(svg);
+    advance(25);
+    const second = pulseCentre(svg);
+    expect(second.x).toBeGreaterThan(first.x);
+    expect(pendingFrames()).toBe(1);
+
+    // The frame that ends the first leg also starts the second leg.
+    advance(25);
+    const legEnd = pulseCentre(svg);
+    expect(legEnd.x).toBeGreaterThan(second.x);
+    expect(pendingFrames()).toBe(1);
+
+    // The second leg is reverse, so the dot goes back to the store.
+    advance(30);
+    const third = pulseCentre(svg);
+    advance(30);
+    const fourth = pulseCentre(svg);
+    expect(fourth.x).toBeLessThan(third.x);
+
+    advance(40);
+    expect(svg.querySelector(".gjs-pulse")).toBeNull();
+    expect(pendingFrames()).toBe(0);
+    await expect(running).resolves.toBe("completed");
+  });
+
+  it("stops the frame loop when the host destroys the view", async () => {
+    const { svg, advance, pendingFrames } = drivenFixture();
+    const view = createSvgGraph(svg, scene, { reducedMotion: () => false });
+
+    const running = view.pulse([{ edge: "email-call" }], { durationMs: 1000 });
+    advance(100);
+    expect(pendingFrames()).toBe(1);
+
+    view.destroy();
+
+    expect(pendingFrames()).toBe(0);
+    expect(svg.querySelector(".gjs-pulse")).toBeNull();
+    await expect(running).resolves.toBe("cancelled");
+  });
+
+  it("never changes the scene records or the arrays of the host", async () => {
+    const { svg, advance } = drivenFixture();
+    const hostNodes = [
+      {
+        id: "store",
+        x: 30,
+        y: 160,
+        width: 150,
+        height: 64,
+        label: "Store",
+        tag: "class",
+        role: "Subject",
+        classes: ["source"],
+      },
+      { id: "email", x: 480, y: 80, width: 180, height: 64, label: "Email" },
+    ];
+    const hostEdges = [{ id: "email-call", from: "store", to: "email" }];
+    const hostScene = {
+      width: 720,
+      height: 400,
+      nodes: hostNodes,
+      edges: hostEdges,
+    };
+    const snapshot = structuredClone(hostScene);
+    const hotNodes = ["store"];
+    const hiddenEdges = ["email-call"];
+
+    const view = createSvgGraph(svg, hostScene, {
+      reducedMotion: () => false,
+    });
+    view.setEffects({ hot: { nodes: hotNodes } });
+    view.setVisibility({ hidden: { edges: hiddenEdges } });
+    view.setRolesVisible(true);
+    view.setNodeClass("store", "selected", true);
+    const running = view.pulse([{ edge: "email-call" }], { durationMs: 100 });
+    advance(100);
+    await running;
+    view.render(hostScene);
+    view.destroy();
+
+    expect(hostScene).toStrictEqual(snapshot);
+    expect(hostScene.nodes).toBe(hostNodes);
+    expect(hostScene.edges).toBe(hostEdges);
+    expect(hotNodes).toStrictEqual(["store"]);
+    expect(hiddenEdges).toStrictEqual(["email-call"]);
+  });
+
+  it("follows the order of the arrays for the paint order", () => {
+    const svg = fixture();
+    const view = createSvgGraph(svg, scene);
+
+    const layers = [...(svg.querySelector(".gjs-root")?.children ?? [])].map(
+      (layer) => layer.getAttribute("class"),
+    );
+    expect(layers.indexOf("gjs-edges")).toBeLessThan(
+      layers.indexOf("gjs-nodes"),
+    );
+
+    const paintOrder = (): readonly (string | null)[] =>
+      [...svg.querySelectorAll(".gjs-node")].map((element) =>
+        element.getAttribute("data-node-id"),
+      );
+
+    expect(paintOrder()).toStrictEqual(["store", "email", "sms"]);
+    expect(
+      [...svg.querySelectorAll(".gjs-edge")].map((element) =>
+        element.getAttribute("data-edge-id"),
+      ),
+    ).toStrictEqual(["email-call", "sms-call"]);
+
+    view.render({ ...scene, nodes: [...scene.nodes].reverse() });
+
+    expect(paintOrder()).toStrictEqual(["sms", "email", "store"]);
   });
 });
