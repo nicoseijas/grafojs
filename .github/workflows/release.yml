@@ -13,8 +13,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # `contents: write` creates the GitHub release. `id-token: write` signs
-      # the provenance statement of the package.
+      # `contents: write` creates the GitHub release. `id-token: write` gives
+      # the job the OIDC token that npm trusted publishing needs. There is no
+      # npm token in this repository, and no secret to rotate.
       contents: write
       id-token: write
 
@@ -22,12 +23,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      # Trusted publishing needs Node 22.14 or later. The test matrix keeps
+      # 22.13, because that is the lowest version that a consumer can use.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22.13.0
+          node-version: 22.x
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      # The npm version that Node ships is older than 11.5.1, which is the
+      # first version that reads the OIDC token.
+      - name: Update npm
+        run: npm install --global npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -46,10 +54,27 @@ jobs:
       - name: Verify project
         run: npm run check
 
+      # The first version goes to the registry by hand, because npm configures
+      # trusted publishing on a package that exists. A job that runs again
+      # after a later failure also finds its version already there. Both cases
+      # skip the publication instead of stopping the release.
+      - name: Look for the version on the registry
+        id: registry
+        run: |
+          name="$(node -p 'require("./package.json").name')"
+          version="$(node -p 'require("./package.json").version')"
+          if npm view "$name@$version" version --loglevel error >/dev/null 2>&1; then
+            echo "The registry already has $name@$version."
+            echo "published=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "published=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      # Trusted publishing signs the provenance statement itself, so the
+      # command needs no `--provenance` flag and no `NODE_AUTH_TOKEN`.
       - name: Publish package
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        if: steps.registry.outputs.published == 'false'
+        run: npm publish --access public
 
       - name: Create GitHub release
         run:
