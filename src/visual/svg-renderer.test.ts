@@ -453,6 +453,141 @@ describe("createSvgGraph", () => {
     ).toBe(true);
   });
 
+  // The class contract of docs/visual/class-contract.md. A host that gives its
+  // own styles writes selectors against these names, so a rename is a breaking
+  // change and not a patch.
+  it("holds the published class contract", () => {
+    const svg = fixture();
+    const box = { width: 120, height: 60 };
+    const view = createSvgGraph(svg, {
+      width: 900,
+      height: 400,
+      nodes: [
+        {
+          id: "rect",
+          x: 20,
+          y: 20,
+          ...box,
+          label: "Rect",
+          tag: "class",
+          role: "Subject",
+        },
+        { id: "pill", x: 200, y: 20, ...box, label: "Pill", shape: "pill" },
+        {
+          id: "ellipse",
+          x: 380,
+          y: 20,
+          ...box,
+          label: "Ellipse",
+          shape: "ellipse",
+        },
+        {
+          id: "diamond",
+          x: 560,
+          y: 20,
+          ...box,
+          label: "Diamond",
+          shape: "diamond",
+        },
+        {
+          id: "hexagon",
+          x: 740,
+          y: 20,
+          ...box,
+          label: "Hexagon",
+          shape: "hexagon",
+        },
+      ],
+      edges: [
+        { id: "relation", from: "rect", to: "pill" },
+        {
+          id: "implementation",
+          from: "pill",
+          to: "ellipse",
+          kind: "implementation",
+        },
+        {
+          id: "invisible",
+          from: "ellipse",
+          to: "diamond",
+          kind: "invisible",
+        },
+      ],
+    });
+
+    view.setVisibility({ hidden: { nodes: ["hexagon"] } });
+    view.setEffects({
+      hot: { nodes: ["rect"] },
+      stress: { nodes: ["pill"] },
+      muted: { edges: ["relation"] },
+    });
+    view.setRolesVisible(true);
+
+    const contract = [
+      '[data-node-id="rect"]',
+      '[data-edge-id="relation"]',
+      ".gjs-root",
+      ".gjs-node",
+      ".gjs-edge",
+      ".gjs-edge--relation",
+      ".gjs-edge--implementation",
+      ".gjs-edge--invisible",
+      ".gjs-node-shape",
+      ".gjs-node-shape--rect",
+      ".gjs-node-shape--pill",
+      ".gjs-node-shape--ellipse",
+      ".gjs-node-shape--diamond",
+      ".gjs-node-shape--hexagon",
+      ".gjs-tag",
+      ".gjs-role",
+      ".gjs-hidden",
+      ".gjs-hot",
+      ".gjs-stress",
+      ".gjs-muted",
+      ".gjs-root.gjs-roles-visible",
+    ];
+
+    for (const selector of contract) {
+      expect(svg.querySelector(selector), selector).not.toBeNull();
+    }
+
+    for (const property of [
+      "--gjs-surface",
+      "--gjs-ink",
+      "--gjs-muted",
+      "--gjs-line",
+      "--gjs-accent",
+      "--gjs-interface",
+      "--gjs-danger",
+    ]) {
+      expect(DEFAULT_VISUAL_CSS, property).toContain(`${property}:`);
+    }
+  });
+
+  it("holds the pulse class contract for each kind", () => {
+    const { svg } = drivenFixture();
+    const view = createSvgGraph(svg, scene, { reducedMotion: () => false });
+
+    void view.pulse([{ edge: "email-call" }], { durationMs: 1000 });
+    expect(svg.querySelector(".gjs-pulse")?.getAttribute("aria-hidden")).toBe(
+      "true",
+    );
+
+    void view.pulse([{ edge: "email-call" }], {
+      durationMs: 1000,
+      kind: "return",
+    });
+    void view.pulse([{ edge: "email-call" }], {
+      durationMs: 1000,
+      kind: "error",
+    });
+
+    expect(svg.querySelector(".gjs-pulse--return")).not.toBeNull();
+    expect(svg.querySelector(".gjs-pulse--error")).not.toBeNull();
+
+    view.destroy();
+  });
+
   it("moves the pulse through the frame loop and runs each leg in order", async () => {
     const { svg, advance, pendingFrames } = drivenFixture();
     const view = createSvgGraph(svg, scene, { reducedMotion: () => false });

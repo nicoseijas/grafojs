@@ -17,8 +17,19 @@ API. A patch version contains only a fix.
   the renderer changed the case in JavaScript, and `text-transform` cannot
   restore the original case.
 
+### Added
+
+- `docs/visual/class-contract.md` makes the class names and the data attributes
+  of the renderer a public contract, with a test that holds each name. A host
+  that sets `injectStyles: false` gives all the styles, so it needs names that
+  do not change in a patch version. The layer groups and the shape of the tree
+  stay internal.
+
 ### Documentation
 
+- `docs/core.md` gives the contract of the headless graph: the model, the
+  payload rule, the order of each result, the error codes, and the cost of each
+  function.
 - `docs/visual/scenes.md` describes how to compose an HTML layer above the SVG
   for an icon, a description, or another element outside the node box.
 - The same guide explains that `kind: "implementation"` draws the UML notation

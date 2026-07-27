@@ -97,6 +97,11 @@ if (svg) {
 The application that uses grafojs keeps the timeline, the narration, the code
 synchronization, and the behavior of its own domain.
 
+The renderer injects its default styles. An application that gives all the
+styles sets `injectStyles: false` and writes selectors against the
+[class contract](https://github.com/nicoseijas/grafojs/blob/main/docs/visual/class-contract.md),
+which gives the names that do not change in a patch version.
+
 ## Layout API
 
 The optional `grafojs/layout` entry point calculates positions. It does not

@@ -131,6 +131,11 @@ custom properties. Set `injectStyles: false` to give all the styles from the
 host. The renderer keeps the classes of the host on a node and on an edge. The
 library reserves the `gjs-` prefix for itself.
 
+A host that gives all the styles writes selectors against the names of the
+renderer. The [class contract](./class-contract.md) gives the names that the
+library holds stable, and it gives the details that can change in a patch
+version.
+
 The `grafojs/visual` entry point also exports those default styles as the
 `DEFAULT_VISUAL_CSS` string. A host that sets `injectStyles: false` can put the
 string into its own stylesheet, and can then change one rule:

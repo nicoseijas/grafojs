@@ -133,6 +133,13 @@ value applies only to a curved route.
 Presentation classes are extensibility hooks, not topology. They must be valid
 single CSS class tokens. grafojs reserves the `gjs-` prefix for its own classes.
 
+The `gjs-` names that a theme needs are a public contract, because
+`injectStyles: false` gives all the styles to the host.
+`docs/visual/class-contract.md` lists them, and a test holds each name. The
+layer groups and the shape of the tree stay internal. A host that needs another
+paint order gives the nodes in that order, and a host that needs more content
+puts an HTML layer above the SVG.
+
 ### Renderer ownership
 
 - `createSvgGraph(svg, scene)` owns the children of the supplied SVG element.
@@ -322,10 +329,13 @@ Answered:
 4. **Publication:** the GitHub repository `nicoseijas/grafojs` exists, and the
    `main` branch is on it. The package metadata points at that repository.
 
+5. **Integration shape:** `design_patterns` adapts its own scene records, and
+   that stays the supported shape. The class names that a theme needs are a
+   public contract, and `docs/visual/class-contract.md` lists them. The layer
+   groups and the shape of the tree stay internal, because the order of the
+   scene arrays already gives the paint order.
+
 Still open:
 
-5. **Theme packaging:** decide whether a standalone CSS asset is useful in
+6. **Theme packaging:** decide whether a standalone CSS asset is useful in
    addition to injectable defaults.
-6. **Integration shape:** `design_patterns` adapts its own scene records today.
-   Decide whether that stays the supported shape, and which parts of the DOM and
-   the `gjs-` class names become a public contract.
