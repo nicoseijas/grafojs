@@ -1,0 +1,69 @@
+{
+  "name": "grafojs",
+  "version": "0.0.0",
+  "description": "A framework-agnostic TypeScript library for declarative graph visualization and immutable graph algorithms.",
+  "keywords": [
+    "graph",
+    "svg",
+    "visualization",
+    "typescript",
+    "diagram"
+  ],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./visual": {
+      "types": "./dist/visual/index.d.ts",
+      "import": "./dist/visual/index.js"
+    },
+    "./layout": {
+      "types": "./dist/layout/index.d.ts",
+      "import": "./dist/layout/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:package && npm audit --audit-level=high",
+    "clean": "node scripts/clean.mjs",
+    "example:basic": "npm run build && node examples/basic.mjs",
+    "example:components": "npm run build && node examples/components.mjs",
+    "example:adapters": "npm run build && node examples/graph-to-scene.mjs",
+    "example:paths": "npm run build && node examples/shortest-paths.mjs",
+    "example:visual": "npm run build && node examples/visual.mjs",
+    "example:visual:browser": "npm run build && node examples/serve-visual.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:package": "npm run build && node --test test/package.test.mjs && node scripts/verify-package.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^10.8.0",
+    "happy-dom": "^20.11.1",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.1.10"
+  }
+}

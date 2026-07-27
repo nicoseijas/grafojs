@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>grafojs visual default demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #0e1420;
+        color: #e8ebf2;
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+      }
+
+      main {
+        width: min(1080px, calc(100% - 32px));
+        padding: 40px 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(1.5rem, 3vw, 2.25rem);
+      }
+
+      p {
+        max-width: 68ch;
+        color: #aeb6c8;
+        line-height: 1.55;
+      }
+
+      .panel {
+        overflow: hidden;
+        border: 1px solid #2b374d;
+        border-radius: 14px;
+        background: #121a28;
+        box-shadow: 0 18px 60px rgb(0 0 0 / 25%);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 16px;
+        border-bottom: 1px solid #2b374d;
+      }
+
+      button {
+        cursor: pointer;
+        border: 1px solid #50607a;
+        border-radius: 7px;
+        padding: 8px 11px;
+        background: #202b3e;
+        color: inherit;
+        font: inherit;
+      }
+
+      button:hover,
+      button:focus-visible {
+        border-color: #ffb454;
+        outline: none;
+      }
+
+      svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      #status {
+        min-height: 1.5em;
+        margin: 14px 16px 18px;
+        color: #8991a3;
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>grafojs/visual — default rendering</h1>
+      <p>
+        This standalone scene uses the library's injected SVG styles. The page
+        only provides its surrounding layout; node, edge, role, state, and pulse
+        styling come from <code>createSvgGraph</code>.
+      </p>
+
+      <section class="panel" aria-label="Interactive graph demo">
+        <div class="controls">
+          <button id="highlight" type="button">Highlight request</button>
+          <button id="pulse" type="button">Run authorization</button>
+          <button id="reveal" type="button">Reveal audit worker</button>
+          <button id="roles" type="button">Show roles</button>
+          <button id="reset" type="button">Reset</button>
+        </div>
+        <svg id="graph"></svg>
+        <p id="status" aria-live="polite">Ready.</p>
+      </section>
+    </main>
+
+    <script type="module">
+      import { createSvgGraph } from "../dist/visual/index.js";
+
+      const scene = {
+        width: 1040,
+        height: 440,
+        ariaLabel: "Payment authorization graph",
+        nodes: [
+          {
+            id: "storefront",
+            x: 50,
+            y: 184,
+            width: 170,
+            height: 72,
+            label: "Storefront",
+            shape: "pill",
+            tag: "client",
+            role: "Caller",
+          },
+          {
+            id: "gateway",
+            x: 310,
+            y: 184,
+            width: 180,
+            height: 72,
+            label: "Payment gateway",
+            tag: "service",
+            role: "Coordinator",
+          },
+          {
+            id: "contract",
+            x: 580,
+            y: 184,
+            width: 180,
+            height: 72,
+            label: "Authorization API",
+            shape: "ellipse",
+            tag: "contract",
+            role: "Interface",
+          },
+          {
+            id: "processor",
+            x: 810,
+            y: 78,
+            width: 180,
+            height: 72,
+            label: "Card processor",
+            shape: "hexagon",
+            tag: "service",
+            role: "Implementation",
+          },
+          {
+            id: "audit",
+            x: 810,
+            y: 288,
+            width: 180,
+            height: 96,
+            label: "Audit\nworker",
+            shape: "diamond",
+            tag: "worker",
+            role: "Background",
+          },
+        ],
+        edges: [
+          {
+            id: "checkout",
+            from: "storefront",
+            to: "gateway",
+            label: "authorize()",
+            routing: "straight",
+          },
+          {
+            id: "authorize",
+            from: "gateway",
+            to: "contract",
+            label: "request",
+            routing: "orthogonal",
+          },
+          {
+            id: "implementation",
+            from: "processor",
+            to: "contract",
+            kind: "implementation",
+            direction: "forward",
+            label: "implements",
+          },
+          {
+            id: "audit-event",
+            from: "gateway",
+            to: "audit",
+            label: "record event",
+            bend: 40,
+          },
+        ],
+      };
+
+      const svg = document.querySelector("#graph");
+      const status = document.querySelector("#status");
+      const view = createSvgGraph(svg, scene);
+      let workerVisible = false;
+      let rolesVisible = false;
+
+      const setStatus = (message) => {
+        status.textContent = message;
+      };
+
+      const applyVisibility = () => {
+        view.setVisibility(
+          workerVisible
+            ? {}
+            : { hidden: { nodes: ["audit"], edges: ["audit-event"] } },
+        );
+      };
+
+      const reset = () => {
+        workerVisible = false;
+        rolesVisible = false;
+        view.setEffects({});
+        view.setRolesVisible(false);
+        applyVisibility();
+        setStatus("Ready.");
+      };
+
+      document.querySelector("#highlight").addEventListener("click", () => {
+        view.setEffects({
+          hot: { nodes: ["gateway", "contract"], edges: ["authorize"] },
+          muted: { nodes: ["audit"], edges: ["audit-event"] },
+        });
+        setStatus("The request path is highlighted.");
+      });
+
+      document.querySelector("#pulse").addEventListener("click", async () => {
+        view.setEffects({ hot: { nodes: ["gateway", "processor"] } });
+        const result = await view.pulse(
+          [
+            { edge: "checkout" },
+            { edge: "authorize" },
+            { edge: "implementation", reverse: true },
+          ],
+          { kind: "call", durationMs: 420 },
+        );
+        if (result === "completed") {
+          await view.pulse(
+            [
+              { edge: "implementation" },
+              { edge: "authorize", reverse: true },
+              { edge: "checkout", reverse: true },
+            ],
+            { kind: "return", durationMs: 300 },
+          );
+        }
+        setStatus(
+          result === "reduced-motion"
+            ? "Animation skipped because reduced motion is enabled."
+            : "Authorization flow completed.",
+        );
+      });
+
+      document.querySelector("#reveal").addEventListener("click", () => {
+        workerVisible = !workerVisible;
+        applyVisibility();
+        setStatus(
+          workerVisible ? "Audit worker revealed." : "Audit worker hidden.",
+        );
+      });
+
+      document.querySelector("#roles").addEventListener("click", () => {
+        rolesVisible = !rolesVisible;
+        view.setRolesVisible(rolesVisible);
+        setStatus(rolesVisible ? "Roles shown." : "Roles hidden.");
+      });
+
+      document.querySelector("#reset").addEventListener("click", reset);
+
+      reset();
+    </script>
+  </body>
+</html>
