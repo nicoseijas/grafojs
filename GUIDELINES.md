@@ -300,8 +300,7 @@ These questions must not be decided accidentally:
 
 1. **Package name:** `grafojs`. Verify availability and conflicts before
    publishing.
-2. **License:** choose and add an OSI-approved license before making the
-   repository public.
+2. **License:** MIT. Keep the license text and package metadata aligned.
 3. **v0 stability policy:** define deprecation and breaking-change policy.
 4. **Theme packaging:** decide whether a standalone CSS asset is useful in
    addition to injectable defaults.

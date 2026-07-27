@@ -2,6 +2,7 @@
   "name": "grafojs",
   "version": "0.0.0",
   "description": "A framework-agnostic TypeScript library for declarative graph visualization and immutable graph algorithms.",
+  "license": "MIT",
   "keywords": [
     "graph",
     "svg",

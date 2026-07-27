@@ -165,3 +165,7 @@ See [GUIDELINES.md](./GUIDELINES.md) for scope,
 [architecture decisions](./docs/adr), and
 [algorithm contracts](./docs/algorithms). Read
 [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes.
+
+## License
+
+MIT. See [LICENSE](./LICENSE).
