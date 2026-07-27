@@ -345,7 +345,10 @@ export const createSvgGraph = (
         tag.setAttribute("class", "gjs-tag");
         tag.setAttribute("x", String(contentX));
         tag.setAttribute("y", String(node.y + tagOffset));
-        tag.textContent = node.tag.toUpperCase();
+        // The case is a theme decision, so it belongs to CSS. JavaScript that
+        // uppercases the text takes the choice away from the host, because
+        // `text-transform` cannot restore the original case.
+        tag.textContent = node.tag;
         group.append(tag);
       }
       if (node.role !== undefined) {
@@ -356,8 +359,7 @@ export const createSvgGraph = (
           "y",
           String(node.y + Math.min(tagOffset + 18, node.height - 8)),
         );
-        role.textContent =
-          `${options.rolePrefix ?? "Role"}: ${node.role}`.toUpperCase();
+        role.textContent = `${options.rolePrefix ?? "Role"}: ${node.role}`;
         group.append(role);
       }
       nodesLayer.append(group);
@@ -402,9 +404,21 @@ export const createSvgGraph = (
     update(effects.muted, "gjs-muted");
   };
 
+  /**
+   * `classList.toggle` flips the class when its second argument is not a
+   * boolean, which would make these setters depend on how often they are
+   * called rather than on the value passed.
+   */
+  const assertFlag = (value: unknown, field: string): boolean => {
+    if (typeof value !== "boolean") {
+      throw new VisualError("INVALID_INPUT", `${field} must be a boolean.`);
+    }
+    return value;
+  };
+
   const setRolesVisible = (visible: boolean): void => {
     ensureActive();
-    root.classList.toggle("gjs-roles-visible", visible);
+    root.classList.toggle("gjs-roles-visible", assertFlag(visible, "visible"));
   };
 
   const setElementClass = (
@@ -416,6 +430,7 @@ export const createSvgGraph = (
   ): void => {
     ensureActive();
     assertClassName(className);
+    assertFlag(enabled, "enabled");
     const value = values.get(id);
     if (value === undefined) {
       throw new VisualError(

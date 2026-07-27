@@ -19,6 +19,7 @@ export const DEFAULT_VISUAL_CSS = `
   fill: var(--gjs-muted);
   font-size: 10px;
   letter-spacing: .08em;
+  text-transform: uppercase;
 }
 .gjs-node .gjs-role {
   display: none;
@@ -26,6 +27,7 @@ export const DEFAULT_VISUAL_CSS = `
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .06em;
+  text-transform: uppercase;
 }
 .gjs-root.gjs-roles-visible .gjs-role { display: inline; }
 .gjs-edge path {

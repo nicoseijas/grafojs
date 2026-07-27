@@ -2,6 +2,7 @@ import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 
 import { VisualError } from "./errors.js";
+import { DEFAULT_VISUAL_CSS } from "./styles.js";
 import { createSvgGraph } from "./svg-renderer.js";
 import type { VisualScene } from "./types.js";
 
@@ -161,8 +162,19 @@ describe("createSvgGraph", () => {
     createSvgGraph(svg, scene, { rolePrefix: "rol" }).setRolesVisible(true);
 
     expect(node(svg, "store").querySelector(".gjs-role")?.textContent).toBe(
-      "ROL: SUBJECT",
+      "rol: Subject",
     );
+  });
+
+  it("keeps the case of a tag and a role, and leaves it to the theme", () => {
+    const svg = fixture();
+
+    createSvgGraph(svg, scene);
+
+    expect(node(svg, "store").querySelector(".gjs-tag")?.textContent).toBe(
+      "class",
+    );
+    expect(DEFAULT_VISUAL_CSS).toContain("text-transform: uppercase");
   });
 
   it("completes zero-duration and reduced-motion pulses", async () => {
@@ -328,5 +340,47 @@ describe("createSvgGraph", () => {
     expect(node(svg, "email").querySelector("text")?.getAttribute("x")).toBe(
       "537.6",
     );
+  });
+
+  it("rejects a self-loop edge instead of drawing a degenerate path", () => {
+    const svg = fixture();
+
+    expect(() =>
+      createSvgGraph(svg, {
+        width: 200,
+        height: 100,
+        nodes: [{ id: "a", x: 10, y: 10, width: 50, height: 20, label: "A" }],
+        edges: [{ id: "loop", from: "a", to: "a" }],
+      }),
+    ).toThrow(VisualError);
+    expect(() =>
+      createSvgGraph(svg, {
+        width: 200,
+        height: 100,
+        nodes: [{ id: "a", x: 10, y: 10, width: 50, height: 20, label: "A" }],
+        edges: [{ id: "loop", from: "a", to: "a" }],
+      }),
+    ).toThrow("cannot start and end at the same node");
+  });
+
+  it("requires a boolean flag rather than silently toggling", () => {
+    const svg = fixture();
+    const view = createSvgGraph(svg, scene);
+
+    expect(() => {
+      view.setRolesVisible(undefined as never);
+    }).toThrow(VisualError);
+    expect(() => {
+      view.setNodeClass("store", "sel", undefined as never);
+    }).toThrow(VisualError);
+    expect(() => {
+      view.setEdgeClass("email-call", "sel", undefined as never);
+    }).toThrow("must be a boolean");
+
+    view.setRolesVisible(true);
+    view.setRolesVisible(true);
+    expect(
+      svg.querySelector(".gjs-root")?.classList.contains("gjs-roles-visible"),
+    ).toBe(true);
   });
 });

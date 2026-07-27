@@ -180,6 +180,16 @@ function validateEdge(
       { entity: "edge", id },
     );
   }
+  // The headless core allows self-loops, but no routing can draw one: start and
+  // end coincide, so the path collapses to a point. Refusing is clearer than
+  // emitting an edge that occupies the DOM and renders nothing.
+  if (value.from === value.to) {
+    throw new VisualError(
+      "INVALID_GEOMETRY",
+      `Visual edge ${id} cannot start and end at the same node.`,
+      { entity: "edge", id },
+    );
+  }
   if (value.label !== undefined && typeof value.label !== "string") {
     throw new VisualError("INVALID_INPUT", "Edge label must be a string.", {
       entity: "edge",

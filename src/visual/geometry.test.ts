@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { VisualError } from "./errors.js";
 import {
   curvePath,
   edgeCurve,
@@ -130,5 +131,35 @@ describe("visual edge geometry", () => {
       x: 300,
       y: 50,
     });
+  });
+
+  it("refuses to emit a path whose computed points overflow to NaN", () => {
+    const far: VisualNode = {
+      id: "far",
+      x: 1e308,
+      y: 20,
+      width: 100,
+      height: 60,
+      label: "Far",
+    };
+    const near: VisualNode = { ...far, id: "near", x: -1e308 };
+
+    for (const routing of ["curve", "straight"] as const) {
+      expect(() =>
+        edgePath({ id: "wide", from: "near", to: "far", routing }, near, far),
+      ).toThrow(VisualError);
+    }
+    expect(() =>
+      edgePath({ id: "wide", from: "near", to: "far" }, near, far),
+    ).toThrow("non-finite");
+
+    // Orthogonal routing subtracts against a midpoint instead of the opposite
+    // centre, so it stays finite here and must not be rejected.
+    const orthogonal = edgePath(
+      { id: "wide", from: "near", to: "far", routing: "orthogonal" },
+      near,
+      far,
+    );
+    expect(pathData(orthogonal)).not.toContain("NaN");
   });
 });

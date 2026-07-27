@@ -1,3 +1,4 @@
+import { VisualError } from "./errors.js";
 import type { VisualEdge, VisualNode } from "./types.js";
 
 export interface Point {
@@ -190,21 +191,42 @@ const orthogonalPath = (from: VisualNode, to: VisualNode): PolylinePath => {
   };
 };
 
+/**
+ * Scene coordinates are validated one by one, but their differences can still
+ * overflow: `1e308 - -1e308` is `Infinity`, and scaling that by zero yields
+ * `NaN`. A `NaN` inside `d` makes a browser drop the whole path silently, so
+ * the geometry refuses to emit one instead.
+ */
+const assertFinitePath = (edge: VisualEdge, path: EdgePath): EdgePath => {
+  const points =
+    "kind" in path ? path.points : [path.start, path.control, path.end];
+  for (const point of points) {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+      throw new VisualError(
+        "INVALID_GEOMETRY",
+        `Visual edge ${edge.id} produced a non-finite path. Node coordinates are too far apart to subtract.`,
+        { entity: "edge", id: edge.id },
+      );
+    }
+  }
+  return path;
+};
+
 export const edgePath = (
   edge: VisualEdge,
   from: VisualNode,
   to: VisualNode,
 ): EdgePath => {
   if ((edge.routing ?? "curve") === "curve") {
-    return edgeCurve(edge, from, to);
+    return assertFinitePath(edge, edgeCurve(edge, from, to));
   }
   if (edge.routing === "orthogonal") {
-    return orthogonalPath(from, to);
+    return assertFinitePath(edge, orthogonalPath(from, to));
   }
-  return {
+  return assertFinitePath(edge, {
     kind: "polyline",
     points: [border(from, center(to)), border(to, center(from))],
-  };
+  });
 };
 
 export const pointOnCurve = (
