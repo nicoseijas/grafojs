@@ -738,6 +738,37 @@ describe("createSvgGraph", () => {
     await expect(running).resolves.toBe("completed");
   });
 
+  it("runs a long chain of legs that take no time", async () => {
+    const { svg } = drivenFixture();
+    const view = createSvgGraph(svg, scene, { reducedMotion: () => false });
+
+    // Each leg of a pulse of zero duration finishes in the same turn. One
+    // call for each leg overflowed the stack at about 8000 legs.
+    const legs = Array.from({ length: 20000 }, () => ({ edge: "email-call" }));
+
+    await expect(view.pulse(legs, { durationMs: 0 })).resolves.toBe(
+      "completed",
+    );
+    expect(svg.querySelector(".gjs-pulse")).toBeNull();
+  });
+
+  it("keeps the legs that it accepted when the host changes its array", async () => {
+    const { svg, advance } = drivenFixture();
+    const view = createSvgGraph(svg, scene, { reducedMotion: () => false });
+
+    const legs = [{ edge: "email-call" }, { edge: "sms-call" }];
+    const running = view.pulse(legs, { durationMs: 100 });
+
+    // The host reuses its own array while the animation runs. The pulse must
+    // finish the chain that `pulse` validated, and must not read an id that
+    // no validation saw.
+    legs[1] = { edge: "ghost" };
+
+    advance(100);
+    advance(100);
+    await expect(running).resolves.toBe("completed");
+  });
+
   it("stops the frame loop when the host destroys the view", async () => {
     const { svg, advance, pendingFrames } = drivenFixture();
     const view = createSvgGraph(svg, scene, { reducedMotion: () => false });

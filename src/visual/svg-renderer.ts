@@ -30,6 +30,11 @@ interface ActivePulse {
   readonly finish: (result: PulseResult) => void;
 }
 
+interface PlannedLeg {
+  readonly edge: string;
+  readonly reverse: boolean;
+}
+
 interface RenderedEdge {
   readonly element: SVGGElement;
   readonly path: EdgePath;
@@ -473,6 +478,15 @@ export const createSvgGraph = (
       return "reduced-motion";
     }
 
+    // The host owns the array of legs, and an animation reads it across many
+    // frames. This copy keeps the run on the legs that the validation
+    // accepted, so a host that changes its own array does not change a pulse
+    // that already started.
+    const plan: readonly PlannedLeg[] = legs.map((leg) => ({
+      edge: leg.edge,
+      reverse: leg.reverse === true,
+    }));
+
     const effectsLayer = root.querySelector<SVGGElement>(".gjs-effects");
     if (effectsLayer === null) {
       throw new VisualError(
@@ -518,36 +532,14 @@ export const createSvgGraph = (
       activePulses.add(active);
       let legIndex = 0;
 
-      const runLeg = (): void => {
-        const leg = legs[legIndex];
-        if (leg === undefined) {
-          active.finish("completed");
-          return;
-        }
-        const rendered = edgeElements.get(leg.edge);
-        if (rendered === undefined) {
-          active.finish("cancelled");
-          return;
-        }
-        if (normalized.durationMs === 0) {
-          const point = pointOnPath(
-            rendered.path,
-            leg.reverse === true ? 0 : 1,
-          );
-          dot.setAttribute("cx", String(point.x));
-          dot.setAttribute("cy", String(point.y));
-          legIndex += 1;
-          runLeg();
-          return;
-        }
+      const animateLeg = (leg: PlannedLeg, rendered: RenderedEdge): void => {
         const startedAt = clock();
         const tick = (timestamp: number): void => {
           const progress = Math.min(
             1,
             (timestamp - startedAt) / normalized.durationMs,
           );
-          const directedProgress =
-            leg.reverse === true ? 1 - progress : progress;
+          const directedProgress = leg.reverse ? 1 - progress : progress;
           const point = pointOnPath(rendered.path, directedProgress);
           dot.setAttribute("cx", String(point.x));
           dot.setAttribute("cy", String(point.y));
@@ -561,6 +553,32 @@ export const createSvgGraph = (
         };
         active.frameId = requestFrame(tick);
       };
+
+      // A leg of zero duration finishes at once, so the whole chain runs in
+      // one turn. A loop keeps that turn on a flat stack, because one call
+      // for each leg overflows the stack on a long chain.
+      function runLeg(): void {
+        for (;;) {
+          const leg = plan[legIndex];
+          if (leg === undefined) {
+            active.finish("completed");
+            return;
+          }
+          const rendered = edgeElements.get(leg.edge);
+          if (rendered === undefined) {
+            active.finish("cancelled");
+            return;
+          }
+          if (normalized.durationMs > 0) {
+            animateLeg(leg, rendered);
+            return;
+          }
+          const point = pointOnPath(rendered.path, leg.reverse ? 0 : 1);
+          dot.setAttribute("cx", String(point.x));
+          dot.setAttribute("cy", String(point.y));
+          legIndex += 1;
+        }
+      }
 
       runLeg();
     });

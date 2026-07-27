@@ -9,7 +9,15 @@ API. A patch version contains only a fix.
 
 ## [Unreleased]
 
-No change since the last release.
+### Fixed
+
+- A pulse of zero duration runs a chain of any length. Each leg started the next
+  one with a call, so a chain of about 8000 legs stopped the animation with a
+  `RangeError`. The legs now run in a loop.
+- A pulse keeps the legs that it accepted. The animation read the array of the
+  host on each frame, so a host that changed that array during a pulse changed
+  the rest of the chain, and gave the renderer an id that no validation saw.
+  `pulse` now copies the legs before the first frame.
 
 ## [0.1.0] - 2026-07-27
 
