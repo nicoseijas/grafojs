@@ -1,5 +1,9 @@
 # grafojs
 
+[![npm version](https://img.shields.io/npm/v/grafojs.svg)](https://www.npmjs.com/package/grafojs)
+[![CI](https://github.com/nicoseijas/grafojs/actions/workflows/ci.yml/badge.svg)](https://github.com/nicoseijas/grafojs/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/grafojs.svg)](https://github.com/nicoseijas/grafojs/blob/main/LICENSE)
+
 A TypeScript library that builds and animates small declarative scenes of nodes
 and edges. It does not need a UI framework. An immutable graph core supports it.
 
@@ -8,6 +12,15 @@ design patterns. The library keeps nothing of that domain: it draws nodes and
 edges, and the application keeps its own content.
 
 The project is in early development. The public API can change during `0.x`.
+
+## Install
+
+```sh
+npm install grafojs
+```
+
+The package needs Node.js 22.13 or a later version, and it ships ESM with type
+declarations. It has no runtime dependency.
 
 ## Features
 
