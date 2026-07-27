@@ -9,10 +9,10 @@ grafojs is a framework-agnostic TypeScript library for building and animating
 small, declarative graph-based scenes. It also provides a headless immutable
 graph core and classic graph algorithms.
 
-The first real consumer is the separate `design_patterns` learning platform.
-That project validates the visual grammar, but grafojs remains generic: no
-public type or behavior may depend on design patterns, educational phases,
-quizzes, or that application's content model.
+The first real consumer is a separate learning application. That project
+validates the visual grammar, but grafojs remains generic: no public type or
+behavior may depend on a teaching concept, a lesson phase, a quiz, or the
+content model of that application.
 
 ---
 
@@ -34,7 +34,7 @@ and future layout helpers. It does not dictate the visual scene model.
 
 ### First-consumer requirements
 
-The `design_patterns` application needs:
+That application needs:
 
 - declarative nodes and edges with stable string ids;
 - explicit positions and sizes;
@@ -222,7 +222,7 @@ shortest paths, and Dijkstra with finite non-negative weights.
 3. Render visual scenes to SVG.
 4. Support visibility, semantic effects, roles, and path pulses.
 5. Validate the packed package from JavaScript and TypeScript consumers.
-6. Integrate one real `design_patterns` scene through the public package.
+6. Integrate one real scene of the first consumer through the public package.
 
 ### Next visual capabilities
 
@@ -337,7 +337,7 @@ Answered:
 4. **Publication:** the GitHub repository `nicoseijas/grafojs` exists, and the
    `main` branch is on it. The package metadata points at that repository.
 
-5. **Integration shape:** `design_patterns` adapts its own scene records, and
+5. **Integration shape:** the first consumer adapts its own scene records, and
    that stays the supported shape. The class names that a theme needs are a
    public contract, and `docs/visual/class-contract.md` lists them. The layer
    groups and the shape of the tree stay internal, because the order of the

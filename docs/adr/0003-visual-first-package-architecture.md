@@ -6,8 +6,8 @@
 ## Context
 
 grafojs began as a headless immutable graph and algorithms package. Its first
-consumer, the separate `design_patterns` project, already contains several small
-SVG visualizations for software structure and runtime behavior.
+consumer, a separate learning application, already contains several small SVG
+visualizations for software structure and runtime behavior.
 
 Those scenes share a reusable visual grammar: positioned nodes, semantic edges,
 progressive reveal, active and stressed states, pattern roles, and animated
@@ -51,14 +51,14 @@ changing the visual renderer's manual-first contract.
 The graph-to-scene adapter preserves graph ids and endpoints while allowing
 consumers to map data to visual presentation. It has no browser dependency.
 
-The renderer does not know about scenarios, frames, design patterns, learning
+The renderer does not know about scenarios, frames, teaching concepts, learning
 content, code panels, or quizzes.
 
 ## Consequences
 
 ### Positive
 
-- `design_patterns` can replace its duplicated low-level SVG renderer.
+- The first consumer can replace its duplicated low-level SVG renderer.
 - Other consumers can use the same visual grammar without adopting an
   educational content engine.
 - Root imports remain headless and safe in Node.

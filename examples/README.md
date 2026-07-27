@@ -26,8 +26,8 @@ npm run example:visual:browser
 
 The command starts a local server and prints one address for each page.
 
-Both pages import the compiled files in `dist/` directly, and neither page
-depends on `design_patterns`.
+Both pages import the compiled files in `dist/` directly. Neither page needs
+another project.
 
 ### Default appearance
 
