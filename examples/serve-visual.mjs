@@ -17,14 +17,16 @@ const contentTypes = {
   ".css": "text/css; charset=utf-8",
 };
 
+const demoPages = new Set([
+  "/examples/visual-default.html",
+  "/examples/visual-composition.html",
+]);
+
 const fileFor = (pathname) => {
   const decodedPath = decodeURIComponent(
     pathname === "/" ? "/examples/visual-default.html" : pathname,
   );
-  if (
-    decodedPath !== "/examples/visual-default.html" &&
-    !decodedPath.startsWith("/dist/")
-  ) {
+  if (!demoPages.has(decodedPath) && !decodedPath.startsWith("/dist/")) {
     return undefined;
   }
   const file = resolve(projectRoot, `.${decodedPath}`);
@@ -53,7 +55,7 @@ const server = createServer((request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(
-    `grafojs visual demo: http://localhost:${String(port)}/examples/visual-default.html`,
-  );
+  for (const page of demoPages) {
+    console.log(`grafojs demo: http://localhost:${String(port)}${page}`);
+  }
 });

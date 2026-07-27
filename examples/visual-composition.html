@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>grafojs — composition with host content</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #111827;
+        --muted: #6b7280;
+        --faint: #9aa1ad;
+        --line: #e4e6eb;
+        --page: #f6f7f9;
+      }
+      body {
+        margin: 0;
+        padding: 28px;
+        background: var(--page);
+        color: var(--ink);
+        font:
+          15px/1.6 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+      p.lede {
+        margin: 0 0 18px;
+        color: var(--muted);
+        max-width: 78ch;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+      }
+      button {
+        font: inherit;
+        font-size: 13px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #c9cdd6;
+      }
+      button[aria-pressed="true"] {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+      .status {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* The stage holds two layers: the SVG that grafojs owns, and an HTML
+         layer that this page owns. Both use the same scene coordinates. */
+      .stage {
+        position: relative;
+        width: 1160px;
+        max-width: 100%;
+        background: #fbfbfc;
+        background-image: radial-gradient(#d7dae1 1px, transparent 1px);
+        background-size: 18px 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: auto;
+      }
+      .stage svg {
+        display: block;
+      }
+
+      /* --- host theme for grafojs (injectStyles is false) --- */
+      .gjs-node-shape {
+        fill: #fff;
+        stroke: var(--line);
+        stroke-width: 1.2;
+        filter: drop-shadow(0 1px 2px rgba(16, 24, 40, 0.06));
+      }
+      .gjs-edge path {
+        fill: none;
+        stroke: #b6bcc8;
+        stroke-width: 1.4;
+      }
+      .gjs-edge.dashed path {
+        stroke-dasharray: 6 6;
+      }
+      .gjs-node.selected .gjs-node-shape {
+        stroke: var(--ink);
+        stroke-width: 1.8;
+      }
+      .gjs-node.gjs-hot .gjs-node-shape {
+        stroke: #2f6df6;
+        stroke-width: 1.8;
+      }
+      .gjs-edge.gjs-hot path {
+        stroke: #2f6df6;
+      }
+      .gjs-pulse {
+        fill: #2f6df6;
+      }
+
+      /* --- the layer this page owns --- */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .overlay[hidden] {
+        display: none;
+      }
+      .card {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 14px;
+        box-sizing: border-box;
+      }
+      .icon {
+        width: 34px;
+        height: 34px;
+        flex: none;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        font-size: 17px;
+        color: #fff;
+      }
+      .icon.blue {
+        background: #2f6df6;
+      }
+      .icon.orange {
+        background: #f59128;
+      }
+      .icon.red {
+        background: #e8453c;
+      }
+      .icon.grey {
+        background: #9aa1ad;
+      }
+      .icon.green {
+        background: #12854a;
+      }
+      .card .text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+      }
+      .card .text b {
+        font-size: 14px;
+      }
+      .card .text span {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .below {
+        position: absolute;
+      }
+      .below p {
+        margin: 0 0 6px;
+        font-size: 12px;
+        line-height: 1.35;
+        color: #7a8194;
+      }
+      .chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chips span {
+        font-size: 11px;
+        color: var(--muted);
+        background: #eceef2;
+        padding: 2px 8px;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Composition with host content</h1>
+    <p class="lede">
+      grafojs draws the cards and every edge: the point where an edge meets the
+      border of a shape, the curve, and the arrow. This page draws the icons,
+      the titles, the descriptions, and the chips in HTML, above the SVG. Both
+      layers read the same coordinates, because this page wrote them.
+    </p>
+
+    <div class="toolbar">
+      <button id="run" type="button">Run the flow</button>
+      <button id="toggle" type="button" aria-pressed="false">
+        Show only the grafojs layer
+      </button>
+      <span class="status" id="status">Ready.</span>
+    </div>
+
+    <div class="stage" id="stage">
+      <svg id="scene" role="img" aria-label="Automation flow"></svg>
+      <div class="overlay" id="overlay"></div>
+    </div>
+
+    <script type="module">
+      import { createSvgGraph } from "../dist/visual/index.js";
+
+      const NODE_W = 200;
+      const NODE_H = 64;
+
+      const cards = [
+        {
+          id: "start",
+          x: 140,
+          y: 420,
+          title: "Start Node",
+          sub: "Main Node",
+          icon: "▶",
+          tone: "blue",
+          desc: "This is a starting point of your automation.",
+          chips: ["Unassigned"],
+        },
+        {
+          id: "creative",
+          x: 470,
+          y: 200,
+          title: "Creative Writer",
+          sub: "Essay",
+          icon: "✎",
+          tone: "orange",
+          desc: "Craft organized essays and articles on a variety of topics.",
+          chips: ["Assigned", "Write Essay"],
+        },
+        {
+          id: "email",
+          x: 470,
+          y: 520,
+          title: "Email Agent",
+          sub: "Gmail",
+          icon: "✉",
+          tone: "red",
+          desc: "Crafts polished and expertly structured emails.",
+          chips: ["Unassigned", "Write Essay"],
+        },
+        {
+          id: "end",
+          x: 850,
+          y: 200,
+          title: "End",
+          sub: "End",
+          icon: "⇥",
+          tone: "grey",
+          desc: "This is an end point of your automation.",
+          chips: ["Unassigned"],
+        },
+        {
+          id: "notif",
+          x: 860,
+          y: 630,
+          title: "Notification",
+          sub: "Slack",
+          icon: "✻",
+          tone: "green",
+          desc: "Stay updated with real-time Slack notifications.",
+          chips: ["Unassigned", "Write Essay"],
+          selected: true,
+        },
+      ];
+
+      const edges = [
+        { id: "s-c", from: "start", to: "creative", bend: -40 },
+        { id: "s-e", from: "start", to: "email", bend: 30 },
+        { id: "s-end", from: "start", to: "end", bend: -210 },
+        { id: "c-end", from: "creative", to: "end", bend: 0 },
+        { id: "c-e", from: "creative", to: "email", bend: 0 },
+        { id: "e-end", from: "email", to: "end", bend: 60 },
+      ];
+
+      // The label stays empty, because the HTML layer paints the text. That is
+      // the trade of this pattern: grafojs contributes the card and the
+      // geometry, and the host contributes the content.
+      const scene = {
+        width: 1160,
+        height: 760,
+        ariaLabel: "Automation flow with five steps",
+        nodes: cards.map((card) => ({
+          id: card.id,
+          x: card.x,
+          y: card.y,
+          width: NODE_W,
+          height: NODE_H,
+          label: "",
+          classes: card.selected ? ["selected"] : [],
+        })),
+        edges: edges.map((edge) => ({
+          id: edge.id,
+          from: edge.from,
+          to: edge.to,
+          bend: edge.bend,
+          classes: ["dashed"],
+        })),
+      };
+
+      const svg = document.querySelector("#scene");
+      const overlay = document.querySelector("#overlay");
+      const status = document.querySelector("#status");
+      const view = createSvgGraph(svg, scene, { injectStyles: false });
+
+      for (const card of cards) {
+        const box = document.createElement("div");
+        box.className = "card";
+        box.style.left = `${card.x}px`;
+        box.style.top = `${card.y}px`;
+        box.style.width = `${NODE_W}px`;
+        box.style.height = `${NODE_H}px`;
+
+        const icon = document.createElement("div");
+        icon.className = `icon ${card.tone}`;
+        icon.textContent = card.icon;
+
+        const text = document.createElement("div");
+        text.className = "text";
+        const title = document.createElement("b");
+        title.textContent = card.title;
+        const sub = document.createElement("span");
+        sub.textContent = card.sub;
+        text.append(title, sub);
+        box.append(icon, text);
+
+        const below = document.createElement("div");
+        below.className = "below";
+        below.style.left = `${card.x + 8}px`;
+        below.style.top = `${card.y + NODE_H + 8}px`;
+        below.style.width = `${NODE_W - 16}px`;
+        const description = document.createElement("p");
+        description.textContent = card.desc;
+        const chips = document.createElement("div");
+        chips.className = "chips";
+        for (const chip of card.chips) {
+          const badge = document.createElement("span");
+          badge.textContent = chip;
+          chips.append(badge);
+        }
+        below.append(description, chips);
+        overlay.append(box, below);
+      }
+
+      const chain = [
+        { legs: [{ edge: "s-c" }], hot: ["start", "creative"] },
+        { legs: [{ edge: "c-e" }], hot: ["creative", "email"] },
+        { legs: [{ edge: "e-end" }], hot: ["email", "end"] },
+      ];
+
+      const run = document.querySelector("#run");
+      run.addEventListener("click", () => {
+        void (async () => {
+          run.disabled = true;
+          for (const step of chain) {
+            view.setEffects({
+              hot: { nodes: step.hot, edges: [step.legs[0].edge] },
+            });
+            const result = await view.pulse(step.legs, {
+              kind: "call",
+              durationMs: 700,
+            });
+            status.textContent = `pulse: ${result}`;
+            if (result === "cancelled") {
+              break;
+            }
+          }
+          view.setEffects({});
+          run.disabled = false;
+        })();
+      });
+
+      const toggle = document.querySelector("#toggle");
+      toggle.addEventListener("click", () => {
+        const pressed = toggle.getAttribute("aria-pressed") === "true";
+        toggle.setAttribute("aria-pressed", String(!pressed));
+        overlay.hidden = !pressed;
+        toggle.textContent = pressed
+          ? "Show only the grafojs layer"
+          : "Show both layers";
+      });
+    </script>
+  </body>
+</html>
