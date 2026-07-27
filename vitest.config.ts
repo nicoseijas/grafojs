@@ -6,9 +6,14 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
+      // The numbers sit just below the coverage of the current suite, so a
+      // change that drops coverage fails the check. A threshold far below the
+      // real number accepts a silent loss of tests.
       thresholds: {
-        branches: 80,
-        lines: 80,
+        statements: 93,
+        branches: 84,
+        functions: 99,
+        lines: 93,
       },
     },
     environment: "node",
