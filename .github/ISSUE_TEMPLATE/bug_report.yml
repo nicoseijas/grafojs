@@ -1,0 +1,69 @@
+name: Bug report
+description: Report behaviour that does not match the documentation.
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Do not use this form for a security problem. Report that one in private
+        with [a security
+        advisory](https://github.com/nicoseijas/grafojs/security/advisories/new).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version of grafojs
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Entry point
+      description: The entry point that shows the problem.
+      options:
+        - grafojs
+        - grafojs/visual
+        - grafojs/layout
+        - grafojs/adapters
+        - More than one
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the documentation promises
+      description:
+        Give the page and the sentence, if a page covers this behaviour.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: The smallest code that shows the problem
+      description:
+        A reader must be able to run this code without a change. The form adds
+        the code block, so no backticks are necessary.
+      render: typescript
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: The version of Node.js, or the browser and its version.
+      placeholder: "Node.js 22.13.0, or Firefox 141 on Windows"
+    validations:
+      required: true

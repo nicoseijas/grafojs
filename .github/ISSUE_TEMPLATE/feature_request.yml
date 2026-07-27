@@ -1,0 +1,40 @@
+name: Feature request
+description: Ask for a capability that the library does not have.
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description:
+        Give the result that you want, not the API that you have in mind. A
+        problem statement lets more than one solution answer it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today
+      description:
+        Give the code that you write now to get near the result, if such code
+        exists.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entry-point
+    attributes:
+      label: Entry point
+      description: >
+        The entry point that the capability belongs to. `grafojs` touches no
+        DOM, so a capability that needs a browser belongs to `grafojs/visual`.
+      options:
+        - grafojs
+        - grafojs/visual
+        - grafojs/layout
+        - grafojs/adapters
+        - I do not know
+    validations:
+      required: true
