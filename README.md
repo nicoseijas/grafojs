@@ -3,9 +3,9 @@
 A TypeScript library that builds and animates small declarative scenes of nodes
 and edges. It does not need a UI framework. An immutable graph core supports it.
 
-grafojs started as the visual layer of a private learning application about
-software design patterns. The library keeps nothing of that domain: it draws
-nodes and edges, and the application keeps its own content.
+grafojs started as the visual layer of a learning application about software
+design patterns. The library keeps nothing of that domain: it draws nodes and
+edges, and the application keeps its own content.
 
 The project is in early development. The public API can change during `0.x`.
 

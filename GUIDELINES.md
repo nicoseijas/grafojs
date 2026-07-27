@@ -9,11 +9,12 @@ grafojs is a framework-agnostic TypeScript library for building and animating
 small, declarative graph-based scenes. It also provides a headless immutable
 graph core and classic graph algorithms.
 
-grafojs started in a private project of the author: a learning application about
-software design patterns. That project is the first real consumer, and it
-validates the visual grammar. But grafojs remains generic: no public type or
-behavior may depend on a teaching concept, a lesson phase, a quiz, or the
-content model of that application.
+grafojs started in a project of the author: a learning application about
+software design patterns. The code of that application is closed, but its pages
+are public. That project is the first real consumer, and it validates the visual
+grammar. But grafojs remains generic: no public type or behavior may depend on a
+teaching concept, a lesson phase, a quiz, or the content model of that
+application.
 
 ---
 
