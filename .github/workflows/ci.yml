@@ -1,7 +1,12 @@
 name: CI
 
+# A push to a branch with a pull request open runs this workflow twice, once
+# for each event. The push trigger thus takes only `main`, and every other
+# branch gets its run from the pull request. A tag runs no check here either,
+# because `release.yml` runs `npm run check` before it publishes.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
