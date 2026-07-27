@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # The package has no runtime dependency, so every update here is a
+  # development tool. One group thus gives one pull request each month.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      development:
+        patterns: ["*"]
+
+  # A workflow that pins an action to a major version still needs an update
+  # when the action gets a new major version.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
