@@ -1,14 +1,25 @@
 {
   "name": "grafojs",
-  "version": "0.0.0",
-  "description": "A framework-agnostic TypeScript library for declarative graph visualization and immutable graph algorithms.",
+  "version": "0.1.0",
+  "description": "Build and animate declarative SVG scenes of nodes and edges. Framework-agnostic, backed by an immutable graph core.",
   "license": "MIT",
+  "author": "Nicolás Seijas <nicoseijas@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicoseijas/grafojs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nicoseijas/grafojs/issues"
+  },
+  "homepage": "https://github.com/nicoseijas/grafojs#readme",
   "keywords": [
-    "graph",
     "svg",
+    "diagram",
     "visualization",
-    "typescript",
-    "diagram"
+    "animation",
+    "architecture-diagram",
+    "graph",
+    "typescript"
   ],
   "engines": {
     "node": ">=22.13"
@@ -18,20 +29,21 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./visual": {
       "types": "./dist/visual/index.d.ts",
-      "import": "./dist/visual/index.js"
+      "default": "./dist/visual/index.js"
     },
     "./layout": {
       "types": "./dist/layout/index.d.ts",
-      "import": "./dist/layout/index.js"
+      "default": "./dist/layout/index.js"
     },
     "./adapters": {
       "types": "./dist/adapters/index.d.ts",
-      "import": "./dist/adapters/index.js"
-    }
+      "default": "./dist/adapters/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist"
@@ -41,7 +53,8 @@
   },
   "scripts": {
     "build": "npm run clean && tsc -p tsconfig.build.json",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:package && npm audit --audit-level=high",
+    "audit": "npm audit --audit-level=high",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:package",
     "clean": "node scripts/clean.mjs",
     "example:basic": "npm run build && node examples/basic.mjs",
     "example:components": "npm run build && node examples/components.mjs",

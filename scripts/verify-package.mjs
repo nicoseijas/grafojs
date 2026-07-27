@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -66,6 +66,12 @@ try {
   const packedPaths = report.files.map(({ path }) => path);
   assert.ok(packedPaths.includes("README.md"));
   assert.ok(packedPaths.includes("package.json"));
+  assert.ok(packedPaths.includes("LICENSE"), "The package must ship LICENSE.");
+  assert.deepEqual(
+    packedPaths.filter((path) => path.startsWith("src/")),
+    [],
+    "The package must not ship TypeScript sources.",
+  );
 
   const expectedDistPaths = sourceFiles(resolve(projectRoot, "src"))
     .filter((path) => path.endsWith(".ts") && !path.endsWith(".test.ts"))
@@ -75,7 +81,6 @@ try {
         .replace(/\.ts$/, "");
       return [
         `dist/${output}.d.ts`,
-        `dist/${output}.d.ts.map`,
         `dist/${output}.js`,
         `dist/${output}.js.map`,
       ];
@@ -200,7 +205,40 @@ try {
     ),
   );
   assert.equal(installedPackage.name, "grafojs");
-  assert.equal(basename(tarball), report.filename);
+
+  // The package ships dist/ only, so a source map that merely points at
+  // ../src/*.ts would be unusable for a consumer. Every map must carry its
+  // own sources.
+  const installedRoot = resolve(consumerDirectory, "node_modules", "grafojs");
+  const maps = sourceFiles(resolve(installedRoot, "dist")).filter((path) =>
+    path.endsWith(".js.map"),
+  );
+  assert.ok(maps.length > 0, "The package must ship source maps.");
+  for (const map of maps) {
+    const parsed = JSON.parse(readFileSync(map, "utf8"));
+    assert.ok(
+      Array.isArray(parsed.sourcesContent) &&
+        parsed.sourcesContent.every(
+          (content) => typeof content === "string" && content.length > 0,
+        ),
+      `Source map without inlined sources: ${relative(installedRoot, map)}`,
+    );
+  }
+
+  // Node resolves `require` of an ES module since 22.12, but only when the
+  // exports map offers a condition that `require` matches.
+  writeFileSync(
+    resolve(consumerDirectory, "required.cjs"),
+    [
+      'const { createGraph } = require("grafojs");',
+      'const { layoutRow } = require("grafojs/layout");',
+      'if (createGraph().nodeCount !== 0) throw new Error("require() of the root entry point failed.");',
+      'if (layoutRow([]).bounds.width !== 0) throw new Error("require() of a subpath failed.");',
+      'require("grafojs/package.json");',
+      "",
+    ].join("\n"),
+  );
+  run(process.execPath, ["required.cjs"], consumerDirectory);
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
 }
