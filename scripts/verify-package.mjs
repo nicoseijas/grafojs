@@ -56,7 +56,10 @@ try {
     ["pack", "--json", "--pack-destination", temporaryRoot],
     projectRoot,
   );
-  const reports = JSON.parse(packOutput);
+  // npm 11 and earlier give an array of reports. npm 12 gives an object that
+  // the name of each package indexes.
+  const parsed = JSON.parse(packOutput);
+  const reports = Array.isArray(parsed) ? parsed : Object.values(parsed);
   const report = reports[0];
 
   if (report === undefined) {

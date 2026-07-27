@@ -33,9 +33,11 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       # The npm version that Node ships is older than 11.5.1, which is the
-      # first version that reads the OIDC token.
+      # first version that reads the OIDC token. The major version is pinned,
+      # because `latest` gave npm 12, and npm 12 changed the output of
+      # `npm pack --json`. A release must not break when npm 13 arrives.
       - name: Update npm
-        run: npm install --global npm@latest
+        run: npm install --global npm@12
 
       - name: Install dependencies
         run: npm ci
