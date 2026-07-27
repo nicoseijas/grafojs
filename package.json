@@ -56,6 +56,7 @@
     "audit": "npm audit --audit-level=high",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run test:package",
     "clean": "node scripts/clean.mjs",
+    "prepack": "npm run build",
     "example:basic": "npm run build && node examples/basic.mjs",
     "example:components": "npm run build && node examples/components.mjs",
     "example:adapters": "npm run build && node examples/graph-to-scene.mjs",
