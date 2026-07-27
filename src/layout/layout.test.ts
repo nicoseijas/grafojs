@@ -148,6 +148,113 @@ describe("radial layout", () => {
   });
 });
 
+describe("layout robustness", () => {
+  const chain = (
+    length: number,
+  ): {
+    readonly nodes: readonly { id: string; width: number; height: number }[];
+    readonly links: readonly { from: string; to: string }[];
+  } => {
+    const chainNodes = [];
+    const chainLinks = [];
+    for (let index = 0; index < length; index += 1) {
+      chainNodes.push({ id: `n${String(index)}`, width: 40, height: 20 });
+      if (index > 0) {
+        chainLinks.push({
+          from: `n${String(index - 1)}`,
+          to: `n${String(index)}`,
+        });
+      }
+    }
+    return { nodes: chainNodes, links: chainLinks };
+  };
+
+  it("places a deep tree without exhausting the call stack", () => {
+    const deep = chain(20000);
+    const layout = layoutTree(deep.nodes, deep.links, { root: "n0" });
+
+    expect(layout.positions.size).toBe(20000);
+    expect(layout.positions.get("n19999")).toEqual({ x: 0, y: 19999 * 68 });
+  });
+
+  it("detects a cycle in a deep chain without exhausting the call stack", () => {
+    const deep = chain(20000);
+
+    expect(() =>
+      layoutTree(deep.nodes, [...deep.links, { from: "n19999", to: "n0" }], {
+        root: "n0",
+      }),
+    ).toThrow("Tree links contain a cycle.");
+  });
+
+  it("lays out a very wide row and column", () => {
+    const wide = chain(200000).nodes;
+
+    expect(layoutRow(wide, { gap: 0 }).bounds.width).toBe(200000 * 40);
+    expect(layoutColumn(wide, { gap: 0 }).bounds.height).toBe(200000 * 20);
+  });
+
+  it("rejects accumulated positions that are no longer finite", () => {
+    const huge = [
+      { id: "a", width: 1e308, height: 20 },
+      { id: "b", width: 1e308, height: 20 },
+      { id: "c", width: 1e308, height: 20 },
+    ];
+
+    expect(() => layoutRow(huge)).toThrow(LayoutError);
+    expect(() => layoutRow(huge)).toThrow(/non-finite/);
+    expect(() =>
+      layoutColumn(huge.map((node) => ({ ...node, height: 1e308 }))),
+    ).toThrow(/non-finite/);
+  });
+
+  it("rejects a tree whose accumulated geometry is no longer finite", () => {
+    expect(() =>
+      layoutTree(
+        [
+          { id: "root", width: 1e308, height: 20 },
+          { id: "left", width: 1e308, height: 20 },
+          { id: "right", width: 1e308, height: 20 },
+        ],
+        [
+          { from: "root", to: "left" },
+          { from: "root", to: "right" },
+        ],
+        { root: "root" },
+      ),
+    ).toThrow(/non-finite/);
+  });
+
+  it("treats a negative full circle as a full circle", () => {
+    const ring = (sweepAngleDegrees: number): readonly string[] =>
+      [
+        ...layoutRadial(
+          [
+            { id: "a", width: 20, height: 20 },
+            { id: "b", width: 20, height: 20 },
+            { id: "c", width: 20, height: 20 },
+          ],
+          { radius: 100, sweepAngleDegrees },
+        ).positions.values(),
+      ].map(({ x, y }) => `${x.toFixed(3)},${y.toFixed(3)}`);
+
+    const clockwise = ring(360);
+    const counterClockwise = ring(-360);
+
+    expect(new Set(clockwise).size).toBe(3);
+    expect(new Set(counterClockwise).size).toBe(3);
+    expect(counterClockwise[0]).toBe(clockwise[0]);
+  });
+
+  it("rejects a sweep wider than a full circle", () => {
+    expect(() =>
+      layoutRadial([{ id: "a", width: 20, height: 20 }], {
+        sweepAngleDegrees: 720,
+      }),
+    ).toThrow("sweepAngleDegrees must be between -360 and 360.");
+  });
+});
+
 describe("applyLayout", () => {
   it("returns positioned copies without mutating visual-node-like input", () => {
     const input = [

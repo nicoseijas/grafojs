@@ -19,6 +19,22 @@ interface TreeBox {
   readonly height: number;
 }
 
+/**
+ * Explicit traversal frame. Tree placement walks with these instead of the
+ * call stack, so depth is bounded by heap rather than by the ~2.6k-frame
+ * JavaScript stack limit.
+ */
+interface TreeFrame {
+  readonly id: string;
+  nextIndex: number;
+}
+
+interface PlaceFrame {
+  readonly id: string;
+  readonly boxX: number;
+  readonly boxY: number;
+}
+
 const validId = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
@@ -111,10 +127,57 @@ const alignmentOffset = (
   return (available - size) / 2;
 };
 
+/**
+ * Largest projected value, without spreading the input into `Math.max`.
+ * Spreading passes one argument per node and overflows the argument stack
+ * around 125k nodes.
+ */
+const maxBy = <T>(
+  items: readonly T[],
+  select: (item: T) => number,
+  initial: number,
+): number => {
+  let largest = initial;
+  for (const item of items) {
+    const value = select(item);
+    if (value > largest) {
+      largest = value;
+    }
+  }
+  return largest;
+};
+
+const BOUNDS_FIELDS = ["x", "y", "width", "height"] as const;
+
+/**
+ * Single exit point of every layout, so that accumulated arithmetic is checked
+ * as strictly as the inputs were. Node sizes and gaps are each finite, but
+ * their running totals can still overflow to `Infinity` and, once subtracted
+ * from each other, to `NaN` — which the visual layer would then reject.
+ */
 const result = (
   positions: ReadonlyMap<string, LayoutPosition>,
   bounds: LayoutBounds,
-): LayoutResult => ({ positions, bounds });
+): LayoutResult => {
+  for (const [id, position] of positions) {
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) {
+      throw new LayoutError(
+        "INVALID_GEOMETRY",
+        `Layout produced a non-finite position for node ${id}. Node sizes and gaps are too large to accumulate.`,
+        id,
+      );
+    }
+  }
+  for (const field of BOUNDS_FIELDS) {
+    if (!Number.isFinite(bounds[field])) {
+      throw new LayoutError(
+        "INVALID_GEOMETRY",
+        `Layout produced non-finite bounds ${field}. Node sizes and gaps are too large to accumulate.`,
+      );
+    }
+  }
+  return { positions, bounds };
+};
 
 /** Places nodes from left to right, preserving their input order. */
 export const layoutRow = (
@@ -125,7 +188,7 @@ export const layoutRow = (
   const point = origin(options);
   const nodeGap = gap(options.gap, "gap");
   const align = alignment(options.align);
-  const height = Math.max(0, ...nodes.map((node) => node.height));
+  const height = maxBy(nodes, (node) => node.height, 0);
   const width = nodes.reduce(
     (total, node, index) => total + node.width + (index === 0 ? 0 : nodeGap),
     0,
@@ -151,7 +214,7 @@ export const layoutColumn = (
   const point = origin(options);
   const nodeGap = gap(options.gap, "gap");
   const align = alignment(options.align);
-  const width = Math.max(0, ...nodes.map((node) => node.width));
+  const width = maxBy(nodes, (node) => node.width, 0);
   const height = nodes.reduce(
     (total, node, index) => total + node.height + (index === 0 ? 0 : nodeGap),
     0,
@@ -273,7 +336,8 @@ export const layoutTree = (
   const root = treeRoot(byId, parents, options.root);
   const visited = new Set<string>();
   const visiting = new Set<string>();
-  const visit = (id: string): void => {
+  const visitStack: TreeFrame[] = [];
+  const enter = (id: string): void => {
     if (visiting.has(id)) {
       throw new LayoutError("INVALID_TREE", "Tree links contain a cycle.", id);
     }
@@ -281,13 +345,27 @@ export const layoutTree = (
       return;
     }
     visiting.add(id);
-    for (const child of children.get(id) ?? []) {
-      visit(child);
-    }
-    visiting.delete(id);
-    visited.add(id);
+    visitStack.push({ id, nextIndex: 0 });
   };
-  visit(root);
+  enter(root);
+  while (visitStack.length > 0) {
+    const frame = visitStack[visitStack.length - 1];
+    if (frame === undefined) {
+      break;
+    }
+    const childIds = children.get(frame.id) ?? [];
+    if (frame.nextIndex < childIds.length) {
+      const child = childIds[frame.nextIndex];
+      frame.nextIndex += 1;
+      if (child !== undefined) {
+        enter(child);
+      }
+      continue;
+    }
+    visitStack.pop();
+    visiting.delete(frame.id);
+    visited.add(frame.id);
+  }
   if (visited.size !== nodes.length) {
     throw new LayoutError(
       "INVALID_TREE",
@@ -296,16 +374,21 @@ export const layoutTree = (
   }
 
   const boxes = new Map<string, TreeBox>();
-  const measure = (id: string): TreeBox => {
+  const measuredBox = (id: string): TreeBox => {
+    const box = boxes.get(id);
+    if (box === undefined) {
+      throw new LayoutError("INVALID_TREE", "Tree measurement failed.", id);
+    }
+    return box;
+  };
+  const measureNode = (id: string, childIds: readonly string[]): TreeBox => {
     const node = byId.get(id);
     if (node === undefined) {
       throw new LayoutError("MISSING_NODE", `Unknown layout node: ${id}.`, id);
     }
-    const childBoxes = (children.get(id) ?? []).map(measure);
+    const childBoxes = childIds.map(measuredBox);
     if (childBoxes.length === 0) {
-      const leaf = { width: node.width, height: node.height };
-      boxes.set(id, leaf);
-      return leaf;
+      return { width: node.width, height: node.height };
     }
     if (direction === "down") {
       const childWidth = childBoxes.reduce(
@@ -313,94 +396,111 @@ export const layoutTree = (
           total + box.width + (index === 0 ? 0 : siblingGap),
         0,
       );
-      const box = {
+      return {
         width: Math.max(node.width, childWidth),
         height:
           node.height +
           levelGap +
-          Math.max(...childBoxes.map((child) => child.height)),
+          maxBy(childBoxes, (child) => child.height, 0),
       };
-      boxes.set(id, box);
-      return box;
     }
     const childHeight = childBoxes.reduce(
       (total, box, index) =>
         total + box.height + (index === 0 ? 0 : siblingGap),
       0,
     );
-    const box = {
+    return {
       width:
-        node.width +
-        levelGap +
-        Math.max(...childBoxes.map((child) => child.width)),
+        node.width + levelGap + maxBy(childBoxes, (child) => child.width, 0),
       height: Math.max(node.height, childHeight),
     };
-    boxes.set(id, box);
-    return box;
   };
 
-  const rootBox = measure(root);
-  const positions = new Map<string, LayoutPosition>();
-  const place = (id: string, boxX: number, boxY: number): void => {
-    const node = byId.get(id);
-    const box = boxes.get(id);
-    if (node === undefined || box === undefined) {
-      throw new LayoutError("INVALID_TREE", "Tree measurement failed.", id);
+  const measureStack: TreeFrame[] = [{ id: root, nextIndex: 0 }];
+  while (measureStack.length > 0) {
+    const frame = measureStack[measureStack.length - 1];
+    if (frame === undefined) {
+      break;
     }
-    const childIds = children.get(id) ?? [];
+    const childIds = children.get(frame.id) ?? [];
+    if (frame.nextIndex < childIds.length) {
+      const child = childIds[frame.nextIndex];
+      frame.nextIndex += 1;
+      if (child !== undefined) {
+        measureStack.push({ id: child, nextIndex: 0 });
+      }
+      continue;
+    }
+    measureStack.pop();
+    boxes.set(frame.id, measureNode(frame.id, childIds));
+  }
+  const rootBox = measuredBox(root);
+  const positions = new Map<string, LayoutPosition>();
+  const placeStack: PlaceFrame[] = [{ id: root, boxX: point.x, boxY: point.y }];
+  while (placeStack.length > 0) {
+    const frame = placeStack.pop();
+    if (frame === undefined) {
+      break;
+    }
+    const node = byId.get(frame.id);
+    if (node === undefined) {
+      throw new LayoutError(
+        "INVALID_TREE",
+        "Tree measurement failed.",
+        frame.id,
+      );
+    }
+    const box = measuredBox(frame.id);
+    const childIds = children.get(frame.id) ?? [];
+    const pending: PlaceFrame[] = [];
     if (direction === "down") {
-      positions.set(id, {
-        x: boxX + (box.width - node.width) / 2,
-        y: boxY,
+      positions.set(frame.id, {
+        x: frame.boxX + (box.width - node.width) / 2,
+        y: frame.boxY,
       });
       const childWidth = childIds.reduce(
         (total, childId, index) =>
-          total +
-          (boxes.get(childId)?.width ?? 0) +
-          (index === 0 ? 0 : siblingGap),
+          total + measuredBox(childId).width + (index === 0 ? 0 : siblingGap),
         0,
       );
-      let cursor = boxX + (box.width - childWidth) / 2;
+      let cursor = frame.boxX + (box.width - childWidth) / 2;
       for (const childId of childIds) {
-        const child = boxes.get(childId);
-        if (child === undefined) {
-          throw new LayoutError(
-            "INVALID_TREE",
-            "Tree measurement failed.",
-            childId,
-          );
-        }
-        place(childId, cursor, boxY + node.height + levelGap);
-        cursor += child.width + siblingGap;
+        pending.push({
+          id: childId,
+          boxX: cursor,
+          boxY: frame.boxY + node.height + levelGap,
+        });
+        cursor += measuredBox(childId).width + siblingGap;
       }
-      return;
-    }
-    positions.set(id, {
-      x: boxX,
-      y: boxY + (box.height - node.height) / 2,
-    });
-    const childHeight = childIds.reduce(
-      (total, childId, index) =>
-        total +
-        (boxes.get(childId)?.height ?? 0) +
-        (index === 0 ? 0 : siblingGap),
-      0,
-    );
-    let cursor = boxY + (box.height - childHeight) / 2;
-    for (const childId of childIds) {
-      const child = boxes.get(childId);
-      if (child === undefined) {
-        throw new LayoutError(
-          "INVALID_TREE",
-          "Tree measurement failed.",
-          childId,
-        );
+    } else {
+      positions.set(frame.id, {
+        x: frame.boxX,
+        y: frame.boxY + (box.height - node.height) / 2,
+      });
+      const childHeight = childIds.reduce(
+        (total, childId, index) =>
+          total + measuredBox(childId).height + (index === 0 ? 0 : siblingGap),
+        0,
+      );
+      let cursor = frame.boxY + (box.height - childHeight) / 2;
+      for (const childId of childIds) {
+        pending.push({
+          id: childId,
+          boxX: frame.boxX + node.width + levelGap,
+          boxY: cursor,
+        });
+        cursor += measuredBox(childId).height + siblingGap;
       }
-      place(childId, boxX + node.width + levelGap, cursor);
-      cursor += child.height + siblingGap;
     }
-  };
-  place(root, point.x, point.y);
+    // Reversed so that the first child is popped first, preserving the
+    // pre-order insertion order of `positions`.
+    for (let index = pending.length - 1; index >= 0; index -= 1) {
+      const next = pending[index];
+      if (next !== undefined) {
+        placeStack.push(next);
+      }
+    }
+  }
   return result(positions, {
     x: point.x,
     y: point.y,
@@ -426,49 +526,45 @@ export const layoutRadial = (
     options.sweepAngleDegrees ?? 360,
     "sweepAngleDegrees",
   );
+  if (Math.abs(sweepDegrees) > 360) {
+    throw new LayoutError(
+      "INVALID_INPUT",
+      "sweepAngleDegrees must be between -360 and 360.",
+    );
+  }
+  // A full circle in either direction excludes its endpoint, so the last node
+  // does not land on top of the first one. Narrower arcs include both ends.
+  const fullCircle = Math.abs(sweepDegrees) === 360;
   const positions = new Map<string, LayoutPosition>();
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
   for (const [index, node] of nodes.entries()) {
     const progress =
       nodes.length <= 1
         ? 0
-        : sweepDegrees === 360
+        : fullCircle
           ? index / nodes.length
           : index / (nodes.length - 1);
     const angle = ((startDegrees + sweepDegrees * progress) * Math.PI) / 180;
-    positions.set(node.id, {
-      x: centerX + Math.cos(angle) * radius - node.width / 2,
-      y: centerY + Math.sin(angle) * radius - node.height / 2,
-    });
+    const x = centerX + Math.cos(angle) * radius - node.width / 2;
+    const y = centerY + Math.sin(angle) * radius - node.height / 2;
+    positions.set(node.id, { x, y });
+    left = Math.min(left, x);
+    top = Math.min(top, y);
+    right = Math.max(right, x + node.width);
+    bottom = Math.max(bottom, y + node.height);
   }
   if (nodes.length === 0) {
     return result(positions, { x: centerX, y: centerY, width: 0, height: 0 });
   }
-  const horizontal = [...positions.entries()].map(([id, position]) => ({
-    position,
-    node: byId(nodes, id),
-  }));
-  const left = Math.min(...horizontal.map(({ position }) => position.x));
-  const top = Math.min(...horizontal.map(({ position }) => position.y));
-  const right = Math.max(
-    ...horizontal.map(({ position, node }) => position.x + node.width),
-  );
-  const bottom = Math.max(
-    ...horizontal.map(({ position, node }) => position.y + node.height),
-  );
   return result(positions, {
     x: left,
     y: top,
     width: right - left,
     height: bottom - top,
   });
-};
-
-const byId = (nodes: readonly LayoutNode[], id: string): LayoutNode => {
-  const node = nodes.find((candidate) => candidate.id === id);
-  if (node === undefined) {
-    throw new LayoutError("MISSING_NODE", `Unknown layout node: ${id}.`, id);
-  }
-  return node;
 };
 
 /** Returns copies of nodes with the positions from a layout result applied. */
