@@ -72,6 +72,21 @@ export const createSvgGraph = (
       "createSvgGraph requires an SVG element.",
     );
   }
+  // An `instanceof SVGSVGElement` check needs a browser global, and the root
+  // entry point must stay free of one. The namespace and the local name give
+  // the same answer and work in every DOM implementation.
+  if (
+    !("namespaceURI" in svgValue) ||
+    svgValue.namespaceURI !== SVG_NS ||
+    !("localName" in svgValue) ||
+    svgValue.localName !== "svg"
+  ) {
+    throw new VisualError(
+      "INVALID_INPUT",
+      "createSvgGraph requires an <svg> element in the SVG namespace.",
+    );
+  }
+
   const svgElement = svgValue as SVGSVGElement;
   const document = svgElement.ownerDocument;
   const platform = document.defaultView;
@@ -81,6 +96,16 @@ export const createSvgGraph = (
       "The SVG element must belong to a document with a window.",
     );
   }
+
+  // The renderer writes these attributes on the element of the host, so it
+  // remembers the value of the host and puts it back on destroy. A host that
+  // gave no value gets no attribute.
+  const hostAttributes = (["viewBox", "role", "aria-label"] as const).map(
+    (name): readonly [string, string | null] => [
+      name,
+      svgElement.getAttribute(name),
+    ],
+  );
 
   const instanceId = `gjs-${String(rendererSequence)}`;
   rendererSequence += 1;
@@ -552,6 +577,13 @@ export const createSvgGraph = (
     }
     cancelPulses();
     root.remove();
+    for (const [name, value] of hostAttributes) {
+      if (value === null) {
+        svgElement.removeAttribute(name);
+      } else {
+        svgElement.setAttribute(name, value);
+      }
+    }
     destroyed = true;
     nodeElements.clear();
     edgeElements.clear();

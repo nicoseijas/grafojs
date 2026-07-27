@@ -58,6 +58,28 @@ An invisible edge keeps its geometry for an animation, but the renderer hides
 its path. Use an invisible edge for a construction slot, for a ring, or for
 another motion that must not show a structural relation.
 
+## The host element
+
+`createSvgGraph` needs an `<svg>` element in the SVG namespace. It rejects
+another element with `INVALID_INPUT`, because an HTML element such as a `<div>`
+accepts the attributes and the child elements without a complaint, and then it
+shows nothing.
+
+The renderer owns the children of that element, and it writes three attributes
+on it: `viewBox`, `role`, and `aria-label`. The `destroy` method removes the
+content of the renderer and gives the three attributes back the value that the
+host gave. An attribute that the host did not give goes away.
+
+```ts
+const view = createSvgGraph(svg, scene);
+// The renderer now controls the children, the viewBox, and the label.
+view.destroy();
+// The element is back in the state that the host gave, without the children.
+```
+
+The renderer does not put the children of the host back, because the first
+render replaces them.
+
 ## Rejected scenes
 
 The renderer validates a scene before it draws anything. A rejected scene thus
@@ -104,6 +126,30 @@ view.setEffects({
 
 An empty object clears that state. An unknown id throws `VisualError`. The
 renderer does not ignore an unknown id.
+
+### A render clears the state of the view
+
+`render` builds a new tree for the new scene, so it clears every state that the
+host set: the visibility, the effects, the roles flag, and each class from
+`setNodeClass` and `setEdgeClass`. The host applies the state again after the
+call:
+
+```ts
+view.render(nextScene);
+view.setVisibility(visibility);
+view.setEffects(effects);
+view.setRolesVisible(rolesVisible);
+view.setNodeClass("cart", "selected", true);
+```
+
+The renderer keeps no memory of the state on purpose. A scene can drop a node,
+and a state that names a node of the previous scene has no correct answer: the
+renderer must either forget it without a word, or throw for an id that the host
+never gave again. An unknown id is a content mistake, and the library reports
+it, so the host owns the state that survives a scene.
+
+A host that renders the same scene again also clears the state. Use `render` for
+a new scene, and use the state methods for a change inside one scene.
 
 ## Animation
 

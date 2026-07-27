@@ -25,8 +25,20 @@ API. A patch version contains only a fix.
   do not change in a patch version. The layer groups and the shape of the tree
   stay internal.
 
+### Fixed
+
+- `createSvgGraph` rejects an element that is not an `<svg>` element in the SVG
+  namespace. The previous version accepted a `<div>`, which takes the attributes
+  and the children without a complaint and then shows nothing.
+- `destroy()` gives the `viewBox`, the `role`, and the `aria-label` of the host
+  element back. The previous version left the values of the renderer on the
+  element of the host.
+
 ### Documentation
 
+- `docs/visual/scenes.md` states that `render` clears the visibility, the
+  effects, the roles flag, and the classes of the host, and it gives the reason:
+  a new scene can drop the id that the state names. A test holds the behavior.
 - `docs/core.md` gives the contract of the headless graph: the model, the
   payload rule, the order of each result, the error codes, and the cost of each
   function.

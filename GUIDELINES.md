@@ -142,9 +142,14 @@ puts an HTML layer above the SVG.
 
 ### Renderer ownership
 
-- `createSvgGraph(svg, scene)` owns the children of the supplied SVG element.
-- Rendering a new scene replaces the renderer-owned visual tree.
-- `destroy()` cancels active animations and removes renderer-owned content.
+- `createSvgGraph(svg, scene)` needs an `<svg>` element in the SVG namespace,
+  and it owns the children of that element.
+- Rendering a new scene replaces the renderer-owned visual tree, and it clears
+  the visibility, the effects, the roles flag, and the classes of the host. The
+  host applies the state again, because a new scene can drop the id that the
+  state names.
+- `destroy()` cancels active animations, removes renderer-owned content, and
+  restores the `viewBox`, `role`, and `aria-label` values of the host.
 - Text is assigned through DOM text APIs, never through untrusted HTML.
 - The renderer provides accessible labeling and marks decorative animation
   elements as hidden from assistive technology.

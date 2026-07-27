@@ -208,6 +208,28 @@ describe("createSvgGraph", () => {
     expect(node(svg, "store").classList.contains("gjs-muted")).toBe(true);
   });
 
+  it("clears the state of the view on a render", () => {
+    const svg = fixture();
+    const view = createSvgGraph(svg, scene);
+
+    view.setVisibility({ hidden: { nodes: ["sms"] } });
+    view.setEffects({ hot: { nodes: ["store"] } });
+    view.setRolesVisible(true);
+    view.setNodeClass("email", "selected", true);
+
+    expect(node(svg, "sms").classList.contains("gjs-hidden")).toBe(true);
+    expect(node(svg, "email").classList.contains("selected")).toBe(true);
+
+    view.render(scene);
+
+    expect(node(svg, "sms").classList.contains("gjs-hidden")).toBe(false);
+    expect(node(svg, "store").classList.contains("gjs-hot")).toBe(false);
+    expect(node(svg, "email").classList.contains("selected")).toBe(false);
+    expect(
+      svg.querySelector(".gjs-root")?.classList.contains("gjs-roles-visible"),
+    ).toBe(false);
+  });
+
   it("toggles roles and consumer classes", () => {
     const svg = fixture();
     const view = createSvgGraph(svg, scene);
@@ -290,6 +312,52 @@ describe("createSvgGraph", () => {
     expect(() => {
       view.setEffects({});
     }).toThrow(VisualError);
+  });
+
+  it("gives the attributes of the host back on destroy", () => {
+    const kept = fixture();
+    kept.setAttribute("viewBox", "0 0 100 50");
+    kept.setAttribute("role", "presentation");
+    kept.setAttribute("aria-label", "Host label");
+
+    const keptView = createSvgGraph(kept, scene);
+    expect(kept.getAttribute("viewBox")).toBe("0 0 720 400");
+    expect(kept.getAttribute("aria-label")).toBe("Observer runtime");
+    keptView.destroy();
+
+    expect(kept.getAttribute("viewBox")).toBe("0 0 100 50");
+    expect(kept.getAttribute("role")).toBe("presentation");
+    expect(kept.getAttribute("aria-label")).toBe("Host label");
+
+    const bare = fixture();
+    createSvgGraph(bare, scene).destroy();
+
+    expect(bare.hasAttribute("viewBox")).toBe(false);
+    expect(bare.hasAttribute("role")).toBe(false);
+    expect(bare.hasAttribute("aria-label")).toBe(false);
+  });
+
+  it("rejects an element that is not an SVG element", () => {
+    const window = new Window();
+    const div = window.document.createElement(
+      "div",
+    ) as unknown as SVGSVGElement;
+    const group = window.document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "g",
+    ) as unknown as SVGSVGElement;
+    // An HTML element with the name of an SVG element. Only the namespace
+    // separates it from the real one.
+    const htmlSvg = window.document.createElement(
+      "svg",
+    ) as unknown as SVGSVGElement;
+
+    for (const element of [div, group, htmlSvg]) {
+      expect(() => createSvgGraph(element, scene)).toThrow(
+        expect.objectContaining({ code: "INVALID_INPUT" }),
+      );
+    }
+    expect(() => createSvgGraph(div, scene)).toThrow("in the SVG namespace");
   });
 
   it("reports malformed scenes and unknown targets with stable codes", () => {
