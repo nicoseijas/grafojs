@@ -1,23 +1,39 @@
 # grafojs
 
-A framework-agnostic TypeScript library for building and animating small,
-declarative graph-based scenes, backed by an immutable graph core.
+A TypeScript library that builds and animates small declarative scenes of nodes
+and edges. It does not need a UI framework. An immutable graph core supports it.
 
-The project is in early development. The public API may change during `0.x`.
+The project is in early development. The public API can change during `0.x`.
 
 ## Features
 
-- Declarative visual scenes with explicit, manual-first positioning.
-- SVG rendering without a UI-framework dependency.
-- Rect, pill, ellipse, diamond, and hexagon node shapes with curve, straight,
-  and orthogonal edge routing.
-- Optional deterministic row, column, tree, and radial layout helpers.
+- A declarative visual scene. You give the position of each node.
+- A renderer that draws SVG and needs no UI framework.
+- The `rect`, `pill`, `ellipse`, `diamond`, and `hexagon` node shapes, with the
+  `curve`, `straight`, and `orthogonal` edge routes.
+- Optional row, column, tree, and radial layout helpers. Each helper gives the
+  same result for the same input.
 - Directed, bidirectional, implementation, and invisible animation paths.
-- Visibility, active, stressed, and muted visual states.
-- Animated call, return, and error pulses with reduced-motion support.
-- Immutable directed multigraphs with typed node and edge payloads.
-- Traversals, components, cycle detection, topological sorting, and paths.
+- The hidden, active, stressed, and muted visual states.
+- Animated call, return, and error pulses. The renderer respects a
+  reduced-motion preference.
+- An immutable directed multigraph with a typed payload on each node and edge.
+- Traversals, components, cycle detection, topological order, and paths.
 - No runtime dependencies.
+
+## Which entry point do you need
+
+The package has four entry points. They are separate on purpose:
+
+- **`grafojs/visual`** renders a scene and animates it. This is the primary
+  entry point. Most applications need only this one.
+- **`grafojs`** gives the headless graph and the algorithms. It touches no DOM
+  and no Node.js global, so it also runs on a server. Import it when you need
+  topology, and not a picture.
+- **`grafojs/layout`** calculates positions. It is optional, because you can
+  always give each position yourself.
+- **`grafojs/adapters`** converts the topology of a graph into a scene. Import
+  it when the graph data drives the picture.
 
 ## Visual API
 
@@ -78,13 +94,13 @@ if (svg) {
 }
 ```
 
-The learning timeline, narration, code synchronization, and domain behavior
-remain in the consuming application.
+The application that uses grafojs keeps the timeline, the narration, the code
+synchronization, and the behavior of its own domain.
 
 ## Layout API
 
-The optional `grafojs/layout` entry point computes positions without changing
-the visual renderer's manual-first model:
+The optional `grafojs/layout` entry point calculates positions. It does not
+change the model of the renderer, where you give each position:
 
 ```ts
 import { applyLayout, layoutRow } from "grafojs/layout";
@@ -93,13 +109,15 @@ const layout = layoutRow(nodes, { x: 40, y: 120, gap: 72 });
 const positionedNodes = applyLayout(nodes, layout);
 ```
 
-It includes `layoutRow`, `layoutColumn`, `layoutTree`, and `layoutRadial`. See
-the [layout guide](./docs/layout.md) for options and tree constraints.
+It has the `layoutRow`, `layoutColumn`, `layoutTree`, and `layoutRadial`
+helpers. The
+[layout guide](https://github.com/nicoseijas/grafojs/blob/main/docs/layout.md)
+gives the options and the limits of a tree.
 
 ## Graph adapter API
 
-`grafojs/adapters` turns immutable graph topology into a visual scene while
-preserving graph ids and endpoints:
+The `grafojs/adapters` entry point changes the topology of an immutable graph
+into a visual scene. It keeps the graph ids and the endpoints:
 
 ```ts
 import { graphToVisualScene } from "grafojs/adapters";
@@ -117,8 +135,10 @@ const scene = graphToVisualScene(graph, {
 });
 ```
 
-Use it with the optional layout helpers when positions derive from graph data.
-See the [graph-to-scene guide](./docs/adapters/graph-to-scene.md).
+Use it with the optional layout helpers when the graph data gives the positions.
+The
+[graph-to-scene guide](https://github.com/nicoseijas/grafojs/blob/main/docs/adapters/graph-to-scene.md)
+gives more information.
 
 ## Headless graph API
 
@@ -143,29 +163,42 @@ shortestPath(graph, "a", "b");
 
 ## Development
 
-Node.js 22.13 or later is required for the repository toolchain.
+The repository toolchain needs Node.js 22.13 or a later version.
 
 ```sh
 npm install
 npm run check
 ```
 
-Runnable examples are available in [examples](./examples).
+The [examples](https://github.com/nicoseijas/grafojs/tree/main/examples)
+directory has examples that you can run.
 
-To preview the default visual package in a browser, run:
+To see the default appearance in a browser, run this command:
 
 ```sh
 npm run example:visual:browser
 ```
 
-This opens a standalone demo at
+The command opens a demo at
 [http://localhost:4174/examples/visual-default.html](http://localhost:4174/examples/visual-default.html).
 
-See [GUIDELINES.md](./GUIDELINES.md) for scope,
-[architecture decisions](./docs/adr), and
-[algorithm contracts](./docs/algorithms). Read
-[CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes.
+[GUIDELINES.md](https://github.com/nicoseijas/grafojs/blob/main/GUIDELINES.md)
+gives the scope. The
+[architecture decisions](https://github.com/nicoseijas/grafojs/tree/main/docs/adr)
+give the design history. The
+[algorithm contracts](https://github.com/nicoseijas/grafojs/tree/main/docs/algorithms)
+give the observable behavior of each algorithm. Read
+[CONTRIBUTING.md](https://github.com/nicoseijas/grafojs/blob/main/CONTRIBUTING.md)
+before you send a change. The documentation follows the
+[writing standard](https://github.com/nicoseijas/grafojs/blob/main/docs/writing-standard.md).
+
+## Versioning
+
+The version numbers follow Semantic Versioning. During `0.x`, a minor version
+can break the API, and a patch version contains only a fix.
+[CHANGELOG.md](https://github.com/nicoseijas/grafojs/blob/main/CHANGELOG.md)
+lists each change.
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+MIT. See [LICENSE](https://github.com/nicoseijas/grafojs/blob/main/LICENSE).

@@ -1,19 +1,20 @@
 # Visual scenes
 
-The `grafojs/visual` entry point renders small declarative scenes to SVG. It is
-framework agnostic and can be called from vanilla JavaScript, Astro, React, Vue,
-Svelte, or another host that supplies an `SVGSVGElement`.
+The `grafojs/visual` entry point renders a small declarative scene to SVG. It
+does not need a UI framework. A host calls it from plain JavaScript, Astro,
+React, Vue, Svelte, or another host that gives an `SVGSVGElement`.
 
 ## Scene semantics
 
-Nodes use explicit coordinates and sizes. Their optional `shape` is one of
-`rect` (the default rounded rectangle), `pill`, `ellipse`, `diamond`, or
-`hexagon`. Edges connect to the appropriate shape border.
+A node has an explicit position and an explicit size. Its optional `shape` is
+one of `rect`, `pill`, `ellipse`, `diamond`, or `hexagon`. The default shape is
+`rect`, a rectangle with round corners. An edge touches the border of the
+correct shape.
 
-Edges use `routing: "curve"` by default; `bend` offsets that quadratic curve's
-control point vertically and defaults to `-14`. `routing: "straight"` draws a
-direct segment, while `routing: "orthogonal"` draws deterministic horizontal and
-vertical elbows at the midpoint.
+An edge uses `routing: "curve"` by default. The `bend` value moves the control
+point of that quadratic curve up or down. Its default is `-14`. The value
+`routing: "straight"` draws a direct segment. The value `routing: "orthogonal"`
+draws horizontal and vertical elbows at the midpoint.
 
 ```ts
 const scene = {
@@ -43,22 +44,51 @@ const scene = {
 };
 ```
 
-SVG does not wrap text automatically. A node label can contain line breaks;
-grafojs renders each line as an SVG `tspan` with a deterministic line height.
+SVG does not break a line of text by itself. A node label can contain a line
+break. grafojs renders each line as an SVG `tspan`, and the line height is
+always the same.
 
-Scene and array order are deterministic:
+The scene order and the array order control what the renderer draws first:
 
-- edges are painted in declared order;
-- nodes are painted above edges in declared order;
-- pulse effects are painted above both.
+- the renderer draws the edges in their declared order;
+- the renderer draws the nodes above the edges, in their declared order;
+- the renderer draws the pulse effects above both.
 
-An invisible edge retains its geometry for animation while its visual path is
-hidden. This is useful for construction slots, rings, and other scene-specific
-motion that should not imply a structural relationship.
+An invisible edge keeps its geometry for an animation, but the renderer hides
+its path. Use an invisible edge for a construction slot, for a ring, or for
+another motion that must not show a structural relation.
+
+## Rejected scenes
+
+The renderer validates a scene before it draws anything. A rejected scene thus
+leaves the previous render unchanged. The renderer checks the ids, the
+endpoints, and the geometry. Two more cases need an explanation:
+
+- **A self-loop.** The renderer rejects an edge whose `from` value and `to`
+  value name the same node. The error code is `INVALID_GEOMETRY`. No routing can
+  draw such an edge, because the start point and the end point are equal, so the
+  path becomes one point. The headless core does accept a self-loop. A graph
+  that goes through `grafojs/adapters` must thus drop or change a self-loop
+  first.
+- **Coordinates that are too far apart.** The renderer checks that each
+  coordinate is a finite number. Their difference can still overflow: `1e308`
+  minus `-1e308` gives `Infinity`, and a product of that value gives `NaN`. A
+  browser drops a whole path that contains `NaN` in its `d` attribute, and it
+  gives no error. The geometry thus throws instead.
+
+grafojs accepts a parallel edge. But two edges between the same pair of nodes
+get the same default geometry, so one edge hides the other. Give each edge a
+different `bend` value to separate them.
+
+The `setRolesVisible`, `setNodeClass`, and `setEdgeClass` methods need a real
+boolean. They reject another type of value. A non-boolean value makes
+`classList.toggle` flip the class. The state of the view then depends on the
+number of calls, not on the value.
 
 ## State updates
 
-`setVisibility` and `setEffects` replace their respective previous state:
+The `setVisibility` method and the `setEffects` method replace their previous
+state:
 
 ```ts
 view.setVisibility({
@@ -72,12 +102,12 @@ view.setEffects({
 });
 ```
 
-Passing an empty object clears that state. Unknown ids throw `VisualError`
-instead of being ignored.
+An empty object clears that state. An unknown id throws `VisualError`. The
+renderer does not ignore an unknown id.
 
 ## Animation
 
-Each pulse leg names an edge and may reverse its path:
+Each pulse leg names an edge. A leg can also reverse the path of that edge:
 
 ```ts
 const result = await view.pulse(
@@ -86,19 +116,82 @@ const result = await view.pulse(
 );
 ```
 
-The result is:
+The result is one of these values:
 
-- `completed` when all legs finish;
-- `cancelled` when the scene is rendered again or the view is destroyed;
-- `reduced-motion` when motion is disabled by the platform or host.
+- `completed`, when all the legs finish;
+- `cancelled`, when the host renders the scene again or destroys the view;
+- `reduced-motion`, when the platform or the host disables motion.
 
 The duration applies to each leg.
 
 ## Theming
 
-Default styles are injected into the SVG and use `--gjs-*` custom properties.
-Set `injectStyles: false` to provide all styles from the host. Consumer classes
-are preserved on nodes and edges; the `gjs-` prefix is reserved by the library.
+The renderer puts its default styles into the SVG. The styles use `--gjs-*`
+custom properties. Set `injectStyles: false` to give all the styles from the
+host. The renderer keeps the classes of the host on a node and on an edge. The
+library reserves the `gjs-` prefix for itself.
 
-The renderer labels roles with `Role:` by default. Localized hosts can set
-`rolePrefix`, for example `{ rolePrefix: "rol" }`.
+The renderer writes `Role:` before a role by default. A host that needs another
+language sets `rolePrefix`, for example `{ rolePrefix: "rol" }`.
+
+The renderer writes the text of a `tag` and of a `role` with the case that you
+give. The default styles then make both uppercase with `text-transform`. A host
+that replaces the styles decides the case itself. A host that keeps the
+uppercase look must copy that `text-transform` rule.
+
+The `kind: "implementation"` value draws the UML notation for a realization: a
+dashed line, and a hollow triangle at the end. The triangle takes the color of
+`--gjs-surface`, because a hollow shape shows the color of the background. So a
+host with a light background must set that custom property.
+
+For a dashed line with a **solid** arrow, keep the default edge kind and add
+your own class:
+
+```ts
+{ id: "step", from: "a", to: "b", classes: ["dashed"] }
+```
+
+```css
+.gjs-edge.dashed path {
+  stroke-dasharray: 6 6;
+}
+```
+
+## Composition with host content
+
+A node draws a shape, a label, an optional tag, and an optional role. It draws
+no icon, no image, and no content outside its own box. A scene that needs those
+things composes two layers, because the host already knows every coordinate: it
+wrote them.
+
+Put an HTML layer above the SVG, and position each element from the same numbers
+that the scene uses:
+
+```ts
+const node = {
+  id: "writer",
+  x: 470,
+  y: 200,
+  width: 200,
+  height: 64,
+  label: "",
+};
+
+// The host paints the icon, the title, and a description with plain HTML.
+overlay.style.left = `${String(node.x)}px`;
+overlay.style.top = `${String(node.y)}px`;
+overlay.style.width = `${String(node.width)}px`;
+```
+
+grafojs still does the work that is difficult to repeat by hand: it finds the
+point where each edge meets the border of a shape, it builds the curve, and it
+orients each arrow.
+
+This pattern has two costs, and you must accept both:
+
+- the text lives outside the SVG, so an exported SVG file contains no text;
+- the SVG has `role="img"` and one accessible name. If the real text is in the
+  HTML layer, decide which of the two layers assistive technology must read.
+
+Keep the scene as the source of truth for the topology and the geometry. Use the
+HTML layer only for presentation.

@@ -1,27 +1,36 @@
 # Contributing
 
-Thanks for helping improve grafojs.
+Thank you for your help with grafojs.
 
 ## Development setup
 
-The repository toolchain requires Node.js 22.13 or later.
+The repository toolchain needs Node.js 22.13 or a later version.
 
 ```sh
 npm install
 npm run check
 ```
 
-`npm run check` runs formatting, lint, type checking, coverage, compiled-package
-verification, and the dependency audit.
+The `npm run check` command runs the formatter, the linter, the type checker,
+the tests with coverage, and the verification of the compiled package.
+
+The `npm run audit` command checks the dependencies. It is a separate command,
+and a separate job in the continuous integration pipeline. A new advisory
+against a dependency must not make a pull request red without a code change. The
+`check` command also needs no network access.
 
 ## Changes
 
-- Start observable behavior with a test or executable example.
-- Keep public documentation, JSDoc, error messages, and examples in English.
-- Preserve graph immutability and deterministic insertion order.
-- Document algorithm input, result order, edge cases, and complexity.
-- Add an ADR for decisions that are expensive to reverse.
-- Avoid runtime dependencies unless an ADR justifies the tradeoff.
+- Start each observable behavior with a test or with an example that runs.
+- Write the public documentation, the JSDoc comments, the error messages, and
+  the examples in English.
+- Follow the [writing standard](./docs/writing-standard.md) in the
+  documentation. It applies ASD-STE100 Simplified Technical English.
+- Keep the graph immutable, and keep the insertion order stable.
+- Document the input, the order of the result, the edge cases, and the
+  complexity of each algorithm.
+- Add an ADR for a decision that is expensive to reverse.
+- Do not add a runtime dependency unless an ADR gives a reason for the tradeoff.
 
-Use conventional commit prefixes such as `feat:`, `fix:`, `docs:`, `test:`,
-`refactor:`, and `chore:`.
+Use a conventional commit prefix, for example `feat:`, `fix:`, `docs:`, `test:`,
+`refactor:`, or `chore:`.

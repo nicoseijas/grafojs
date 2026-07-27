@@ -1,12 +1,14 @@
 # Layout helpers
 
-`grafojs/layout` provides small, deterministic, dependency-free helpers for
-arranging nodes before they are rendered. It is optional: applications can
-continue to supply manual coordinates whenever narrative control matters.
+The `grafojs/layout` entry point gives small helpers that arrange nodes before
+the renderer draws them. The helpers have no dependencies, and each helper gives
+the same result for the same input. They are optional: an application can always
+give manual coordinates when it needs narrative control.
 
-Each helper accepts records with an `id`, `width`, and `height`, then returns
-immutable positions and bounds. `applyLayout` combines those positions with the
-original records without mutating them.
+Each helper accepts records that have an `id`, a `width`, and a `height`. Each
+helper then returns positions and bounds that the caller cannot change. The
+`applyLayout` function joins those positions with the original records, and it
+does not change the records.
 
 ## Rows and columns
 
@@ -26,17 +28,23 @@ const nodes = applyLayout(
 );
 ```
 
-`layoutRow` and `layoutColumn` preserve input order. Both accept `x`, `y`,
-`gap`, and a cross-axis `align` value of `start`, `center` (the default), or
-`end`.
+The `layoutRow` helper and the `layoutColumn` helper keep the input order. Both
+accept `x`, `y`, `gap`, and a cross-axis `align` value. The `align` value is
+`start`, `center`, or `end`. The default is `center`.
 
 ## Trees
 
 ```ts
 import { layoutTree } from "grafojs/layout";
 
+const tree = [
+  { id: "gateway", width: 150, height: 64 },
+  { id: "card", width: 150, height: 64 },
+  { id: "bank", width: 150, height: 64 },
+];
+
 const layout = layoutTree(
-  nodes,
+  tree,
   [
     { from: "gateway", to: "card" },
     { from: "gateway", to: "bank" },
@@ -50,10 +58,14 @@ const layout = layoutTree(
 );
 ```
 
-Tree links point from parent to child, and their array order controls sibling
-order. The helper rejects cycles, duplicate links, multiple parents, unknown
-nodes, and disconnected trees. `direction` is `down` by default and may also be
+A tree link points from the parent to the child. The order of the link array
+controls the order of the children. The helper rejects a cycle, a duplicate
+link, a node with more than one parent, an unknown node, and a tree that is not
+connected. The `direction` value is `down` by default, and it can also be
 `right`.
+
+The helper walks the tree with explicit stacks, not with recursion. The depth of
+a tree is thus limited by the available heap, not by the JavaScript call stack.
 
 ## Radial arrangements
 
@@ -68,5 +80,21 @@ const layout = layoutRadial(nodes, {
 });
 ```
 
-Nodes are placed around the requested circle in input order. The default sweep
-is 360 degrees; a non-360-degree sweep includes both endpoints of the arc.
+The helper puts the nodes around the requested circle in the input order. The
+default sweep is 360 degrees.
+
+A full circle in one direction or the other (`360` or `-360`) does not include
+its end point. The last node thus does not go on top of the first node. A
+smaller arc includes both end points. The `sweepAngleDegrees` value must be
+between `-360` and `360`. A larger sweep puts one node on top of another node.
+
+## Failure modes
+
+Each helper validates its input. It checks that an id is not empty, that a size
+is larger than zero, and that a number is finite. Each helper also validates the
+geometry that it calculates.
+
+A node size and a gap are finite, but their total can still overflow to
+`Infinity`. A subtraction of two such totals then gives `NaN`. The helpers do
+not return a coordinate that the visual layer must reject. They throw
+`LayoutError` with the code `INVALID_GEOMETRY` instead.

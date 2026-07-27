@@ -14,21 +14,21 @@ interface ShortestPathResult<N, E> {
 }
 ```
 
-The object and both arrays are frozen at runtime. `nodes` includes both
-endpoints. `edges` identifies the exact chosen edges, which keeps paths
+grafojs freezes the object and both arrays at runtime. `nodes` includes both
+endpoints. `edges` shows the exact chosen edges. This keeps each path
 unambiguous in a multigraph.
 
 A path from a node to itself contains that node, no edges, and distance `0`.
 Valid but disconnected endpoints produce `undefined`. A missing endpoint throws
 `GraphError` with code `UNKNOWN_NODE`.
 
-All paths follow outgoing edges. Equal alternatives are resolved by edge
-insertion order and the order in which nodes become reachable.
+Every path follows outgoing edges. grafojs resolves an equal alternative with
+edge insertion order and with the order in which the nodes become reachable.
 
 ## `shortestPath`
 
-Uses breadth-first search and minimizes the number of edges. `distance` is the
-number of selected edges.
+`shortestPath` uses breadth-first search and minimizes the number of edges.
+`distance` is the number of selected edges.
 
 Complexity over the reachable subgraph:
 
@@ -37,20 +37,21 @@ Complexity over the reachable subgraph:
 
 ## `dijkstra`
 
-Accepts a pure function `(edge) => number`. The function is evaluated exactly
-once for every edge before the search, including edges in disconnected
-components. This makes invalid weights deterministic rather than dependent on
-which component is reachable.
+`dijkstra` accepts a pure function `(edge) => number`. `dijkstra` calls the
+function exactly one time for every edge before the search. This includes the
+edges in disconnected components. So the behavior for an invalid weight is
+always the same. It does not depend on which component is reachable.
 
 Every weight must be finite and non-negative. Negative values, `NaN`, and
 infinities throw `GraphError` with code `INVALID_WEIGHT`. A finite accumulated
-distance that overflows JavaScript's finite number range throws
-`DISTANCE_OVERFLOW`. Exceptions thrown by the weight function itself propagate
-unchanged.
+distance that overflows the finite number range of JavaScript throws
+`DISTANCE_OVERFLOW`. The weight function itself can throw an exception. grafojs
+does not catch this error, and grafojs does not change it.
 
-Equal-distance alternatives keep the first path discovered by deterministic
-queue and edge insertion order. The implementation uses a stable binary min-heap
-and does not require a runtime dependency.
+For an equal-distance alternative, `dijkstra` keeps the first path that the
+search finds. The queue order and the edge insertion order control this choice,
+and the result is always the same. The implementation uses a stable binary
+min-heap. The implementation does not need a runtime dependency.
 
 Complexity:
 

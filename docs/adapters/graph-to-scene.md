@@ -1,9 +1,9 @@
 # Graph to visual scene adapter
 
-`graphToVisualScene` bridges the immutable headless graph and the visual scene
-model. It keeps topology as the source of truth: graph node ids, edge ids, and
-edge endpoints are copied into the scene automatically. Consumers only map
-presentation.
+The `graphToVisualScene` function joins the immutable headless graph and the
+visual scene model. The topology stays the source of truth: the function copies
+the graph node ids, the edge ids, and the edge endpoints into the scene. The
+caller maps only the presentation.
 
 ```ts
 import { createGraph, getNodes } from "grafojs";
@@ -46,7 +46,20 @@ const scene = graphToVisualScene(graph, {
 });
 ```
 
-The node mapper must return every `VisualNode` field except `id`. The optional
-edge mapper returns every `VisualEdge` field except `id`, `from`, and `to`. When
-omitted, edges are rendered with default presentation. The adapter validates the
-resulting scene before returning it.
+The node mapper must return each `VisualNode` field except `id`. The optional
+edge mapper returns each `VisualEdge` field except `id`, `from`, and `to`. If
+the caller gives no edge mapper, the renderer draws the edges with the default
+presentation. The adapter validates the scene before it returns the scene.
+
+## Topology that the visual model does not accept
+
+The headless core is a multigraph. It accepts a self-loop and a parallel edge.
+The visual model is smaller, so the caller must handle two cases before the
+conversion:
+
+- the adapter rejects a **self-loop**, because no routing can draw an edge whose
+  start point and end point are equal. Remove such an edge first, or show it as
+  an annotation on the node;
+- a **parallel edge** converts correctly and keeps its own id. But two parallel
+  edges get the same default geometry, so one edge hides the other. Give each
+  edge a different `bend` value from the edge mapper.

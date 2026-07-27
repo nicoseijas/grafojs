@@ -236,24 +236,27 @@ shortest paths, and Dijkstra with finite non-negative weights.
    `grafojs/visual`.
 9. **Accessible and motion-aware by default.**
 10. **English public documentation.** Markdown, public JSDoc, examples, package
-    metadata, errors, and exported names use English.
+    metadata, errors, and exported names use English. Markdown documentation
+    follows ASD-STE100 Simplified Technical English, as recorded in ADR-0004 and
+    specified in `docs/writing-standard.md`.
 
 ## 7. Technical decisions
 
-| Topic                | Decision                                           |
-| -------------------- | -------------------------------------------------- |
-| Language             | TypeScript with `strict: true`                     |
-| Modules              | ESM only                                           |
-| Development and CI   | Node ≥ 22.13                                       |
-| ECMAScript target    | ES2022                                             |
-| Root runtime         | No Node, DOM, or browser globals                   |
-| Visual runtime       | Standard DOM, SVG, and animation-frame APIs        |
-| Rendering            | SVG first                                          |
-| Layout               | Explicit coordinates first; optional helpers later |
-| Tests                | Vitest; DOM emulation is development-only          |
-| Build                | `tsc` declarations and source maps                 |
-| Runtime dependencies | None in v0                                         |
-| Distribution         | Packed-package tests before publication            |
+| Topic                | Decision                                                     |
+| -------------------- | ------------------------------------------------------------ |
+| Language             | TypeScript with `strict: true`                               |
+| Modules              | ESM only                                                     |
+| Development and CI   | Node ≥ 22.13                                                 |
+| ECMAScript target    | ES2022                                                       |
+| Root runtime         | No Node, DOM, or browser globals                             |
+| Visual runtime       | Standard DOM, SVG, and animation-frame APIs                  |
+| Rendering            | SVG first                                                    |
+| Layout               | Explicit coordinates first; optional helpers later           |
+| Tests                | Vitest; DOM emulation is development-only                    |
+| Build                | `tsc` declarations, plus source maps with inlined sources    |
+| Runtime dependencies | None in v0                                                   |
+| Distribution         | Packed-package tests before publication                      |
+| Entry points         | `types` and `default` conditions, so `require` also resolves |
 
 ## 8. Repository structure
 
@@ -292,17 +295,30 @@ A change is complete when:
 - [ ] no runtime dependency is added without an ADR;
 - [ ] changed public exports are tested from the compiled package;
 - [ ] `src/` contains no consumer-specific concepts;
-- [ ] public-facing documentation is in English.
+- [ ] public-facing documentation is in English and follows
+      `docs/writing-standard.md`.
 
 ## 10. Open questions
 
-These questions must not be decided accidentally:
+These questions must not be decided accidentally.
 
-1. **Package name:** `grafojs`. Verify availability and conflicts before
-   publishing.
-2. **License:** MIT. Keep the license text and package metadata aligned.
-3. **v0 stability policy:** define deprecation and breaking-change policy.
+Answered:
+
+1. **Package name:** `grafojs`. The npm registry returned 404 for that name on
+   2026-07-27, so the name is free.
+2. **License:** MIT. The `LICENSE` file, the `license` field, and the README
+   agree, and the packed tarball ships `LICENSE`.
+3. **v0 stability policy:** Semantic Versioning, with the `0.x` exception. A
+   minor version can break the API, and a patch version only fixes.
+   `CHANGELOG.md` records each change.
+
+Still open:
+
 4. **Theme packaging:** decide whether a standalone CSS asset is useful in
    addition to injectable defaults.
-5. **Integration shape:** validate whether `design_patterns` should adapt its
-   existing scene records or adopt the grafojs visual model directly.
+5. **Integration shape:** `design_patterns` adapts its own scene records today.
+   Decide whether that stays the supported shape, and which parts of the DOM and
+   the `gjs-` class names become a public contract.
+6. **Publication:** the GitHub repository `nicoseijas/grafojs` does not exist
+   yet. The package metadata already points at it. Create the repository and
+   push before the first `npm publish`.
