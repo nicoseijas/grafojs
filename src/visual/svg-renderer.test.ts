@@ -128,6 +128,30 @@ const drivenFixture = (): DrivenFixture => {
   };
 };
 
+/** A document that can hold more than one view, plus its own svg factory. */
+const sharedDocument = (): {
+  readonly svg: () => SVGSVGElement;
+  readonly sequence: (value: number) => void;
+} => {
+  const window = new Window();
+  return {
+    svg: () =>
+      window.document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg",
+      ) as unknown as SVGSVGElement,
+    sequence: (value) => {
+      const store = window.document as unknown as Record<symbol, unknown>;
+      store[Symbol.for("grafojs.renderer-sequence")] = value;
+    },
+  };
+};
+
+const markerIds = (svg: SVGSVGElement): readonly string[] =>
+  [...svg.querySelectorAll("marker")].map(
+    (marker) => marker.getAttribute("id") ?? "",
+  );
+
 const pulseCentre = (svg: SVGSVGElement): { x: number; y: number } => {
   const dot = svg.querySelector(".gjs-pulse");
   if (dot === null) {
@@ -736,6 +760,50 @@ describe("createSvgGraph", () => {
     expect(svg.querySelector(".gjs-pulse")).toBeNull();
     expect(pendingFrames()).toBe(0);
     await expect(running).resolves.toBe("completed");
+  });
+
+  it("gives two views of one document different marker ids", () => {
+    const owner = sharedDocument();
+    const first = owner.svg();
+    const second = owner.svg();
+
+    createSvgGraph(first, scene);
+    createSvgGraph(second, scene);
+
+    // A shared id makes `url(#...)` of one view point into the other view.
+    const ids = new Set([...markerIds(first), ...markerIds(second)]);
+    expect(ids.size).toBe(markerIds(first).length + markerIds(second).length);
+  });
+
+  it("counts the views of the document, not the views of the module", () => {
+    // A page can hold two copies of grafojs, and each copy holds its own
+    // module state. The counter therefore lives on the document, where the
+    // registered symbol reaches it from every copy. This test writes the slot
+    // the way another copy leaves it.
+    const owner = sharedDocument();
+    const before = owner.svg();
+    createSvgGraph(before, scene);
+    const taken = markerIds(before);
+
+    owner.sequence(41);
+    const after = owner.svg();
+    createSvgGraph(after, scene);
+
+    expect(markerIds(after).every((id) => id.startsWith("gjs-42-"))).toBe(true);
+    expect(taken.some((id) => markerIds(after).includes(id))).toBe(false);
+  });
+
+  it("starts the count again in another document", () => {
+    // The result stays the same for the same input, so a snapshot of a
+    // document does not depend on the tests that ran before it.
+    const first = sharedDocument().svg();
+    const second = sharedDocument().svg();
+
+    createSvgGraph(first, scene);
+    createSvgGraph(second, scene);
+
+    expect(markerIds(first)).toStrictEqual(markerIds(second));
+    expect(markerIds(first).every((id) => id.startsWith("gjs-0-"))).toBe(true);
   });
 
   it("runs a long chain of legs that take no time", async () => {

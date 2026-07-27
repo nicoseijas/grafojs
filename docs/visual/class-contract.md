@@ -104,6 +104,12 @@ them, and do not read them from JavaScript:
 - the id of a marker and the value of `data-grafo-renderer`;
 - each rule inside `DEFAULT_VISUAL_CSS`.
 
+The renderer numbers each view of a document, and it keeps that number on the
+document itself, under the registered symbol `grafojs.renderer-sequence`. The
+number gives each view its own marker ids. A page that loads two copies of
+grafojs thus gets no collision, because both copies reach the same slot. Do not
+write into that slot: two views with one number take the markers of each other.
+
 The renderer owns the children of the SVG element. A host that writes into that
 tree loses the change at the next `render` call, because the renderer builds a
 new tree for each scene.

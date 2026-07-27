@@ -18,6 +18,12 @@ API. A patch version contains only a fix.
   host on each frame, so a host that changed that array during a pulse changed
   the rest of the chain, and gave the renderer an id that no validation saw.
   `pulse` now copies the legs before the first frame.
+- Two copies of grafojs on one page give their markers different ids. The
+  counter of the instances lived in the module, so each copy started again at
+  zero, and an edge of one view took the arrow of the other. The counter now
+  lives on the document, under a registered symbol that every copy reaches. The
+  number also starts again in each document, so a rendered document does not
+  depend on the documents before it.
 
 ## [0.1.0] - 2026-07-27
 

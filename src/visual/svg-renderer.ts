@@ -22,7 +22,29 @@ import {
 } from "./validation.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-let rendererSequence = 0;
+
+/**
+ * The counter of the instances belongs to the document, not to this module.
+ *
+ * A page can load two copies of grafojs: one from the application and one
+ * inside a dependency that bundles its own. Each copy holds its own module
+ * state, so a counter in a module gives `gjs-0` to both. The ids of their
+ * markers then collide, and an edge of one view takes the arrow of the other.
+ *
+ * A registered symbol reaches the same slot of the document from every copy,
+ * and each document starts again at zero. The result is thus unique in the
+ * document that holds it, and it does not depend on the order in which a page
+ * loads its bundles.
+ */
+const SEQUENCE_KEY = Symbol.for("grafojs.renderer-sequence");
+
+const nextInstanceId = (owner: Document): string => {
+  const store = owner as unknown as Record<symbol, unknown>;
+  const previous = store[SEQUENCE_KEY];
+  const value = typeof previous === "number" ? previous + 1 : 0;
+  store[SEQUENCE_KEY] = value;
+  return `gjs-${String(value)}`;
+};
 
 interface ActivePulse {
   frameId: number | undefined;
@@ -113,8 +135,7 @@ export const createSvgGraph = (
     ],
   );
 
-  const instanceId = `gjs-${String(rendererSequence)}`;
-  rendererSequence += 1;
+  const instanceId = nextInstanceId(document);
   const markerId = `${instanceId}-arrow`;
   const implementationMarkerId = `${instanceId}-implementation`;
   let root = document.createElementNS(SVG_NS, "g");
