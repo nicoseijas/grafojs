@@ -6,8 +6,9 @@
 ## Context
 
 grafojs began as a headless immutable graph and algorithms package. Its first
-consumer, a separate learning application, already contains several small SVG
-visualizations for software structure and runtime behavior.
+consumer, a private learning application about software design patterns, already
+contains several small SVG visualizations for software structure and runtime
+behavior.
 
 Those scenes share a reusable visual grammar: positioned nodes, semantic edges,
 progressive reveal, active and stressed states, pattern roles, and animated
