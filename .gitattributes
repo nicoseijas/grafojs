@@ -1,0 +1,8 @@
+# Check every text file out with LF on every platform. Prettier compares
+# against LF, so a CRLF checkout on Windows makes `format:check` reject files
+# that are correct in the repository.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
