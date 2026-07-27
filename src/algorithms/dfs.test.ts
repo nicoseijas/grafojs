@@ -31,6 +31,20 @@ describe("dfs", () => {
     expect(ids(dfs(graph, "b"))).toEqual(["b", "d", "a", "c"]);
   });
 
+  it("descends before backtracking when a sibling is also a deeper successor", () => {
+    const shared = createGraph({
+      nodes: ["a", "b", "c", "d"].map(node),
+      edges: [
+        { id: "a-b", from: "a", to: "b", data: undefined },
+        { id: "a-c", from: "a", to: "c", data: undefined },
+        { id: "a-d", from: "a", to: "d", data: undefined },
+        { id: "b-d", from: "b", to: "d", data: undefined },
+      ],
+    });
+
+    expect(ids(dfs(shared, "a"))).toEqual(["a", "b", "d", "c"]);
+  });
+
   it("does not visit disconnected nodes", () => {
     expect(ids(dfs(graph, "isolated"))).toEqual(["isolated"]);
     expect(ids(dfs(graph, "a"))).not.toContain("isolated");
