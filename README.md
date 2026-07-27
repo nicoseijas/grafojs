@@ -161,6 +161,10 @@ bfs(graph, "a");
 shortestPath(graph, "a", "b");
 ```
 
+The [core guide](https://github.com/nicoseijas/grafojs/blob/main/docs/core.md)
+gives the model, the order of each result, the error codes, and the cost of each
+function.
+
 ## Development
 
 The repository toolchain needs Node.js 22.13 or a later version.

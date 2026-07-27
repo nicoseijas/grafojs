@@ -131,6 +131,18 @@ custom properties. Set `injectStyles: false` to give all the styles from the
 host. The renderer keeps the classes of the host on a node and on an edge. The
 library reserves the `gjs-` prefix for itself.
 
+The `grafojs/visual` entry point also exports those default styles as the
+`DEFAULT_VISUAL_CSS` string. A host that sets `injectStyles: false` can put the
+string into its own stylesheet, and can then change one rule:
+
+```ts
+import { DEFAULT_VISUAL_CSS } from "grafojs/visual";
+```
+
+The string is the source of the injected styles, so it changes with the
+appearance of the renderer. Treat it as a start point for a theme, and do not
+treat each rule in it as a stable contract.
+
 The renderer writes `Role:` before a role by default. A host that needs another
 language sets `rolePrefix`, for example `{ rolePrefix: "rol" }`.
 

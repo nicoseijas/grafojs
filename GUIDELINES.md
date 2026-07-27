@@ -90,6 +90,9 @@ Svelte, Astro, or another rendering framework.
 The initial public model is:
 
 ```ts
+type VisualNodeShape = "rect" | "pill" | "ellipse" | "diamond" | "hexagon";
+type VisualEdgeRouting = "curve" | "straight" | "orthogonal";
+
 interface VisualNode {
   readonly id: string;
   readonly x: number;
@@ -97,6 +100,7 @@ interface VisualNode {
   readonly width: number;
   readonly height: number;
   readonly label: string;
+  readonly shape?: VisualNodeShape;
   readonly tag?: string;
   readonly role?: string;
   readonly classes?: readonly string[];
@@ -109,6 +113,7 @@ interface VisualEdge {
   readonly label?: string;
   readonly kind?: "relation" | "implementation" | "invisible";
   readonly direction?: "forward" | "both" | "none";
+  readonly routing?: VisualEdgeRouting;
   readonly bend?: number;
   readonly classes?: readonly string[];
 }
@@ -121,6 +126,9 @@ interface VisualScene {
   readonly edges: readonly VisualEdge[];
 }
 ```
+
+The default shape is `rect`, and the default routing is `curve`. The `bend`
+value applies only to a curved route.
 
 Presentation classes are extensibility hooks, not topology. They must be valid
 single CSS class tokens. grafojs reserves the `gjs-` prefix for its own classes.
@@ -311,14 +319,13 @@ Answered:
 3. **v0 stability policy:** Semantic Versioning, with the `0.x` exception. A
    minor version can break the API, and a patch version only fixes.
    `CHANGELOG.md` records each change.
+4. **Publication:** the GitHub repository `nicoseijas/grafojs` exists, and the
+   `main` branch is on it. The package metadata points at that repository.
 
 Still open:
 
-4. **Theme packaging:** decide whether a standalone CSS asset is useful in
+5. **Theme packaging:** decide whether a standalone CSS asset is useful in
    addition to injectable defaults.
-5. **Integration shape:** `design_patterns` adapts its own scene records today.
+6. **Integration shape:** `design_patterns` adapts its own scene records today.
    Decide whether that stays the supported shape, and which parts of the DOM and
    the `gjs-` class names become a public contract.
-6. **Publication:** the GitHub repository `nicoseijas/grafojs` does not exist
-   yet. The package metadata already points at it. Create the repository and
-   push before the first `npm publish`.
