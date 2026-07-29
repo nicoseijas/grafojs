@@ -9,6 +9,13 @@ API. A patch version contains only a fix.
 
 ## [Unreleased]
 
+### Added
+
+- The `edgesAboveNodes` option of `createSvgGraph`. It paints the edges layer
+  after the nodes layer, so a label longer than the gap between two nodes stays
+  readable instead of disappearing under them. The default order does not
+  change.
+
 ### Fixed
 
 - A pulse of zero duration runs a chain of any length. Each leg started the next

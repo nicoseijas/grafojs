@@ -412,7 +412,11 @@ export const createSvgGraph = (
       nodeElements.set(node.id, group);
     }
 
-    root.append(...fragments, edgesLayer, nodesLayer, effectsLayer);
+    const graphLayers =
+      options.edgesAboveNodes === true
+        ? [nodesLayer, edgesLayer]
+        : [edgesLayer, nodesLayer];
+    root.append(...fragments, ...graphLayers, effectsLayer);
     svgElement.replaceChildren(root);
   };
 

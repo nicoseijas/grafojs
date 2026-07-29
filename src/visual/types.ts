@@ -72,6 +72,14 @@ export type PulseResult = "completed" | "cancelled" | "reduced-motion";
 export interface SvgGraphOptions {
   /** Inject grafojs default styles into the SVG. Defaults to true. */
   readonly injectStyles?: boolean;
+  /**
+   * Paint the edges layer after the nodes layer. An edge keeps its path
+   * between the borders of its endpoints, so the layer order only decides who
+   * wins where they overlap: a label longer than the gap between two nodes
+   * disappears under them with the default order, and stays readable with
+   * this one. Defaults to false.
+   */
+  readonly edgesAboveNodes?: boolean;
   /** Overrides the platform reduced-motion preference. */
   readonly reducedMotion?: () => boolean;
   /** Label placed before a node role. Defaults to "Role". */

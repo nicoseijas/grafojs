@@ -926,4 +926,29 @@ describe("createSvgGraph", () => {
 
     expect(paintOrder()).toStrictEqual(["sms", "email", "store"]);
   });
+
+  it("paints the edges above the nodes when the host asks for it", () => {
+    const svg = fixture();
+    const view = createSvgGraph(svg, scene, { edgesAboveNodes: true });
+
+    const layerOrder = (): readonly (string | null)[] =>
+      [...(svg.querySelector(".gjs-root")?.children ?? [])].map((layer) =>
+        layer.getAttribute("class"),
+      );
+
+    let layers = layerOrder();
+    expect(layers.indexOf("gjs-nodes")).toBeLessThan(
+      layers.indexOf("gjs-edges"),
+    );
+    expect(layers.indexOf("gjs-edges")).toBeLessThan(
+      layers.indexOf("gjs-effects"),
+    );
+
+    view.render(scene);
+
+    layers = layerOrder();
+    expect(layers.indexOf("gjs-nodes")).toBeLessThan(
+      layers.indexOf("gjs-edges"),
+    );
+  });
 });
