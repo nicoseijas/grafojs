@@ -35,6 +35,12 @@ export interface NodeText {
   readonly label: string;
   readonly tag?: string;
   readonly role?: string;
+  /**
+   * Where the role row sits. A container node whose interior is occupied
+   * (a ring around another node) shows the role in the bottom band, because
+   * the top rows lie under the contained node. Defaults to "top".
+   */
+  readonly roleAt?: "top" | "bottom";
   readonly shape?: VisualNodeShape;
 }
 
@@ -69,17 +75,24 @@ export const nodeRowOffsets = (
       : tag + NODE_TEXT.tagToRole;
   // The role stays inside the node, but the gap to the row above wins: text on
   // top of text is unreadable, and text below the border is not.
-  const role = Math.max(
-    rowAbove + NODE_TEXT.minRowGap,
-    Math.min(wanted, height - NODE_TEXT.padding),
-  );
+  const role =
+    node.roleAt === "bottom"
+      ? Math.max(rowAbove + NODE_TEXT.minRowGap, height - NODE_TEXT.padding)
+      : Math.max(
+          rowAbove + NODE_TEXT.minRowGap,
+          Math.min(wanted, height - NODE_TEXT.padding),
+        );
   return { label, tag, role };
 };
 
-/** The height that fits every row of the node, with equal space above and below. */
+/**
+ * The height that fits every row of the node, with equal space above and
+ * below. A bottom role adds nothing: it lives in the bottom band of whatever
+ * height the node already has.
+ */
 export const fittedNodeHeight = (node: NodeText): number => {
   const offsets = nodeRowOffsets(node, Number.POSITIVE_INFINITY);
-  if (node.role !== undefined) {
+  if (node.role !== undefined && node.roleAt !== "bottom") {
     return offsets.role + NODE_TEXT.roleDescent + NODE_TEXT.padding;
   }
   if (node.tag !== undefined) {

@@ -16,6 +16,12 @@ export interface VisualNode {
   readonly shape?: VisualNodeShape;
   readonly tag?: string;
   readonly role?: string;
+  /**
+   * Where the role row sits. "bottom" puts it in the bottom band of the
+   * node, for containers whose top rows lie under a contained node (the
+   * rings of a wrapper stack). Defaults to "top".
+   */
+  readonly roleAt?: "top" | "bottom";
   readonly classes?: readonly string[];
 }
 

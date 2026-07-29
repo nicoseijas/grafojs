@@ -11,6 +11,10 @@ API. A patch version contains only a fix.
 
 ### Added
 
+- The `roleAt` field of a visual node. A container node whose interior is
+  occupied (a ring around another node) shows its role in the bottom band with
+  `roleAt: "bottom"`, because the top rows lie under the contained node. The
+  fit helpers leave a bottom role out of the height.
 - The `edgesAboveNodes` option of `createSvgGraph`. It paints the edges layer
   after the nodes layer, so a label longer than the gap between two nodes stays
   readable instead of disappearing under them. The default order does not

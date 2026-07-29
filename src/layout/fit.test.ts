@@ -10,6 +10,7 @@ const rowsOf = (
     readonly label: string;
     readonly tag?: string;
     readonly role?: string;
+    readonly roleAt?: "top" | "bottom";
   },
   height: number,
 ): readonly number[] => {
@@ -51,6 +52,22 @@ describe("fitNodeHeight", () => {
       expect(above, `space above for ${JSON.stringify(node)}`).toBe(10);
       expect(below, `space below for ${JSON.stringify(node)}`).toBe(10);
     }
+  });
+
+  it("puts a bottom role in the bottom band and leaves it out of the height", () => {
+    const node = {
+      label: "CompressionDecorator",
+      tag: "capa",
+      role: "Decorator",
+      roleAt: "bottom" as const,
+    };
+
+    expect(fitNodeHeight(node)).toBe(
+      fitNodeHeight({ label: node.label, tag: node.tag }),
+    );
+
+    const rows = rowsOf(node, 122);
+    expect(rows[rows.length - 1]).toBe(122 - 10);
   });
 
   it("grows with each row and with each line of the label", () => {
